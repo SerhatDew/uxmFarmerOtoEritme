@@ -1,0 +1,18 @@
+name: uxmFarmerOtoEritme
+version: '1.0.0'
+main: com.blokoyun.uxmfarmerautosmelt.UxmFarmerAutoSmeltPlugin
+api-version: '1.20'
+authors:
+  - BlokOyun
+description: UXMFarmer toplama olayları için config tabanlı otomatik eritme ve komut hook'u.
+softdepend:
+  - uxmFarmer
+commands:
+  uxmfarmerotosmelter:
+    description: UXMFarmer otomatik eritme ayarlarını yeniler.
+    aliases: [farmerotosmelter, otoeritme]
+    permission: uxmfarmerotosmelter.admin
+permissions:
+  uxmfarmerotosmelter.admin:
+    description: Oto eritme yapılandırmasını yenileme yetkisi.
+    default: op

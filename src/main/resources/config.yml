@@ -1,0 +1,37 @@
+enabled: true
+
+# UXMFarmer sınıflarına derleme zamanında bağlanılmaz.
+# Hook, olay sınıfını çalışma anında yüklediği için UXMFarmer güncellemelerinde
+# bağımlılık sürümünü değiştirmek gerekmez.
+hook:
+  plugin-name: uxmFarmer
+  event-class: com.uxplima.uxmfarmer.api.event.impl.FarmerCollectProductEvent
+  priority: NORMAL
+
+# Bir eşleşen kuralda belirtilmeyen alanlar burada kullanılır.
+defaults:
+  mode: plugin # plugin: ürünü UXMFarmer depolasın, commands: aşağıdaki komutları çalıştır
+  min-amount: 1
+  max-amount: 0 # 0 = sınırsız
+  consume: false # commands modunda ürünü UXMFarmer deposuna ekleme
+  permission: ''
+  commands: []
+
+# Anahtarlar Bukkit Material adlarıdır. Büyük/küçük harf fark etmez.
+items:
+  IRON_ORE:
+    mode: commands
+    min-amount: 1
+    consume: true
+    commands:
+      - 'give %player% iron_ingot %amount%'
+  GOLD_ORE:
+    mode: commands
+    min-amount: 1
+    consume: true
+    commands:
+      - 'give %player% gold_ingot %amount%'
+  # DIAMOND_ORE:
+  #   mode: plugin
+  #   min-amount: 32
+  #   permission: example.permission
