@@ -17,17 +17,39 @@ final class FarmerReflection {
     }
 
     static EventData readEvent(Event event) throws ReflectiveOperationException {
-        Method materialMethod = event.getClass().getMethod("getCollectedProduct");
-        Method amountMethod = event.getClass().getMethod("getCollectedAmount");
-        Method farmerUuidMethod = event.getClass().getMethod("getFarmerUUID");
-        Method setAmountMethod = event.getClass().getMethod("setCollectedAmount", int.class);
+        Method materialMethod;
+        Method amountMethod;
+        Method farmerUuidMethod;
+        Method setAmountMethod;
+        try {
+            materialMethod = event.getClass().getMethod("getCollectedProduct");
+            amountMethod = event.getClass().getMethod("getCollectedAmount");
+            farmerUuidMethod = event.getClass().getMethod("getFarmerUUID");
+            setAmountMethod = event.getClass().getMethod("setCollectedAmount", int.class);
+        } catch (NoSuchMethodException targetEvent) {
+            Object farmer = event.getClass().getMethod("getFarmer").invoke(event);
+            Object item = event.getClass().getMethod("getItem").invoke(event);
+            materialMethod = item.getClass().getMethod("getType");
+            amountMethod = event.getClass().getMethod("getCollectAmount");
+            farmerUuidMethod = farmer.getClass().getMethod("getOwnerUUID");
+            setAmountMethod = event.getClass().getMethod("setCancelled", boolean.class);
+            Object material = materialMethod.invoke(item);
+            Object amount = amountMethod.invoke(event);
+            Object farmerUuid = farmerUuidMethod.invoke(farmer);
+            if (!(material instanceof Material) || !(amount instanceof Number) || !(farmerUuid instanceof UUID)) {
+                throw new IllegalStateException("Farmer event getter dönüş tipleri beklenen türde değil");
+            }
+            return new EventData((Material) material, ((Number) amount).intValue(), (UUID) farmerUuid,
+                    null, setAmountMethod);
+        }
         Object material = materialMethod.invoke(event);
         Object amount = amountMethod.invoke(event);
         Object farmerUuid = farmerUuidMethod.invoke(event);
         if (!(material instanceof Material) || !(amount instanceof Number) || !(farmerUuid instanceof UUID)) {
             throw new IllegalStateException("UXMFarmer event getter dönüş tipleri beklenen türde değil");
         }
-        return new EventData((Material) material, ((Number) amount).intValue(), (UUID) farmerUuid, setAmountMethod);
+        return new EventData((Material) material, ((Number) amount).intValue(), (UUID) farmerUuid,
+                setAmountMethod, null);
     }
 
     static OwnerData resolveOwner(UUID farmerUuid, JavaPlugin plugin, ClassLoader dependencyClassLoader) {
@@ -49,11 +71,13 @@ final class FarmerReflection {
             return new OwnerData(ownerUuid, name == null || name.isBlank() ? ownerUuid.toString() : name);
         } catch (ReflectiveOperationException | LinkageError ex) {
             plugin.getLogger().fine("UXMFarmer sahibine reflection ile ulaşılamadı: " + ex.getMessage());
-            return OwnerData.unknown();
+            OfflinePlayer owner = Bukkit.getOfflinePlayer(farmerUuid);
+            String name = owner.getName();
+            return new OwnerData(farmerUuid, name == null || name.isBlank() ? farmerUuid.toString() : name);
         }
     }
 
-    private static Class<?> loadApiClass(JavaPlugin plugin, ClassLoader dependencyClassLoader)
+    static Class<?> loadApiClass(JavaPlugin plugin, ClassLoader dependencyClassLoader)
             throws ClassNotFoundException {
         ClassLoader[] classLoaders = {
                 dependencyClassLoader,
@@ -73,9 +97,10 @@ final class FarmerReflection {
         return Class.forName(API_CLASS);
     }
 
-    record EventData(Material material, int amount, UUID farmerUuid, Method setAmountMethod) {
+    record EventData(Material material, int amount, UUID farmerUuid, Method setAmountMethod, Method cancelMethod) {
         void setAmount(Event event, int amount) throws ReflectiveOperationException {
-            setAmountMethod.invoke(event, amount);
+            if (setAmountMethod != null) setAmountMethod.invoke(event, amount);
+            else cancelMethod.invoke(event, true);
         }
     }
 

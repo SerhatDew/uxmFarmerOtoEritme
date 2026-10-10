@@ -1,11 +1,12 @@
 enabled: true
+trigger: click # click = sadece farmer GUI düğmesi, automatic = toplama event'i
 
 # UXMFarmer sınıflarına derleme zamanında bağlanılmaz.
 # Hook, olay sınıfını çalışma anında yüklediği için UXMFarmer güncellemelerinde
 # bağımlılık sürümünü değiştirmek gerekmez.
 hook:
-  plugin-name: uxmFarmer
-  event-class: com.uxplima.uxmfarmer.api.event.impl.FarmerCollectProductEvent
+  plugin-name: Farmer
+  event-class: xyz.geik.farmer.api.handlers.FarmerItemCollectEvent
   priority: NORMAL
 
 # Bir eşleşen kuralda belirtilmeyen alanlar burada kullanılır.
@@ -16,6 +17,25 @@ defaults:
   consume: false # commands modunda ürünü UXMFarmer deposuna ekleme
   permission: ''
   commands: []
+
+gui:
+  enabled: true
+  slot: 7
+  rows: 6
+  duration-seconds: 10
+  batch-size: 64 # 0 = depodaki uygun miktarın tamamı
+  permission: uxmfarmerotosmelter.use
+  button:
+    material: BLAST_FURNACE
+    name: '&6ᴏᴛᴏ ᴇʀɪᴛᴍᴇ'
+    lore:
+      - ''
+      - '&7ᴜʀᴜɴ ᴍᴇɴᴜsᴜɴᴜ ᴀᴄᴍᴀᴋ ɪᴄɪɴ ᴛɪᴋʟᴀ'
+      - ''
+      - '&eᴇʀɪᴛᴍᴇ ᴍᴇɴᴜsᴜ ɪᴄɪɴ ᴛɪᴋʟᴀ'
+  progress:
+    name: '&6ᴇʀɪᴛɪʟɪʏᴏʀ'
+    bar-length: 20
 
 # Anahtarlar Bukkit Material adlarıdır. Büyük/küçük harf fark etmez.
 items:
@@ -33,5 +53,6 @@ items:
       - 'give %player% gold_ingot %amount%'
   # DIAMOND_ORE:
   #   mode: plugin
+  #   output-material: DIAMOND
   #   min-amount: 32
   #   permission: example.permission

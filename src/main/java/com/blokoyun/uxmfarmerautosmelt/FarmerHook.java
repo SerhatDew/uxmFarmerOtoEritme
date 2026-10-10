@@ -20,6 +20,7 @@ final class FarmerHook {
     private Plugin dependency;
     private boolean dependencyWarningLogged;
     private boolean threadWarningLogged;
+    private boolean registered;
 
     FarmerHook(JavaPlugin plugin, RuleConfiguration configuration) {
         this.plugin = plugin;
@@ -30,8 +31,13 @@ final class FarmerHook {
         this.configuration = configuration;
     }
 
+    void unregister() {
+        org.bukkit.event.HandlerList.unregisterAll(listener);
+        registered = false;
+    }
+
     boolean register() {
-        org.bukkit.event.HandlerList.unregisterAll(plugin);
+        if (registered) return true;
         if (!configuration.enabled()) {
             plugin.getLogger().info("Hook config.yml içinde devre dışı bırakıldı.");
             return true;
@@ -64,6 +70,7 @@ final class FarmerHook {
             return false;
         }
         eventClass = typedEventClass;
+        registered = true;
         plugin.getLogger().info("UXMFarmer hook aktif: " + typedEventClass.getName()
                 + " (" + configuration.itemCount() + " özel item kuralı)");
         return true;
@@ -105,6 +112,9 @@ final class FarmerHook {
         if (eventClass != null && !eventClass.isInstance(event)) {
             return;
         }
+        if (event instanceof org.bukkit.event.Cancellable cancellable && cancellable.isCancelled()) {
+            return;
+        }
         if (!Bukkit.isPrimaryThread()) {
             if (!threadWarningLogged) {
                 plugin.getLogger().warning("UXMFarmer toplama olayı ana sunucu thread'i dışında geldi; komut hook'u atlandı.");
@@ -135,7 +145,6 @@ final class FarmerHook {
 
             CommandContext context = CommandContext.of(data.material(), data.amount(), owner.name(),
                     owner.known() ? owner.uuid().toString() : "", data.farmerUuid().toString());
-            boolean allCommandsAccepted = true;
             int attemptedCommands = 0;
             for (String commandTemplate : rule.commands()) {
                 String command = context.apply(commandTemplate).trim();
@@ -147,12 +156,13 @@ final class FarmerHook {
                 }
                 attemptedCommands++;
                 boolean accepted = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-                allCommandsAccepted &= accepted;
                 if (!accepted) {
                     plugin.getLogger().warning("Komut kabul edilmedi: " + command);
                 }
             }
-            if (rule.consume() && attemptedCommands > 0 && allCommandsAccepted) {
+            // A command can have side effects before Bukkit reports false. Once any
+            // command was attempted, leave the event consumed to prevent duplication.
+            if (rule.consume() && attemptedCommands > 0) {
                 data.setAmount(event, 0);
             }
         } catch (ReflectiveOperationException | RuntimeException ex) {

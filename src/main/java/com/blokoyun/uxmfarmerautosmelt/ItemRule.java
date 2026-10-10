@@ -21,7 +21,12 @@ public record ItemRule(
         if (maxAmount < 0) {
             throw new IllegalArgumentException("maxAmount cannot be negative");
         }
-        commands = List.copyOf(commands);
+        if (maxAmount > 0 && maxAmount < minAmount) {
+            throw new IllegalArgumentException("maxAmount cannot be below minAmount");
+        }
+        commands = commands.stream().map(String::trim).filter(command -> !command.isBlank())
+                .map(command -> command.startsWith("/") ? command.substring(1).trim() : command)
+                .filter(command -> !command.isBlank()).toList();
         permission = permission == null ? "" : permission.trim();
     }
 

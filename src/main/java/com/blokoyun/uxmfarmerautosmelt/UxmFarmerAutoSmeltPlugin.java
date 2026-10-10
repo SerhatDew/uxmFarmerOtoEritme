@@ -7,6 +7,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements CommandExecutor {
     private FarmerHook hook;
+    private SmeltGuiHook smeltGuiHook;
+    private RuleConfiguration configuration;
     private boolean retryScheduled;
 
     @Override
@@ -21,20 +23,31 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
 
     @Override
     public void onDisable() {
+        if (smeltGuiHook != null) {
+            smeltGuiHook.shutdown();
+        }
+        if (hook != null) {
+            hook.unregister();
+        }
         hook = null;
     }
 
     private void reloadHook() {
         reloadConfig();
-        RuleConfiguration configuration = RuleConfiguration.load(this);
+        configuration = RuleConfiguration.load(this);
         if (hook == null) {
             hook = new FarmerHook(this, configuration);
         } else {
             hook.updateConfiguration(configuration);
         }
-        if (!hook.register()) {
-            scheduleHookRetry();
+        hook.unregister();
+        boolean hookReady = !configuration.automatic() || hook.register();
+        if (smeltGuiHook != null) {
+            smeltGuiHook.shutdown();
         }
+        smeltGuiHook = new SmeltGuiHook(this, configuration);
+        boolean guiReady = smeltGuiHook.register();
+        if (!hookReady || !guiReady) scheduleHookRetry();
     }
 
     private void scheduleHookRetry() {
@@ -44,7 +57,9 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
         retryScheduled = true;
         getServer().getGlobalRegionScheduler().runDelayed(this, task -> {
             retryScheduled = false;
-            if (hook != null && !hook.register()) {
+            boolean hookReady = hook == null || !configuration.automatic() || hook.register();
+            boolean guiReady = smeltGuiHook == null || smeltGuiHook.register();
+            if (!hookReady || !guiReady) {
                 scheduleHookRetry();
             }
         }, 200L);
@@ -53,15 +68,15 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("uxmfarmerotosmelter.admin")) {
-            sender.sendMessage("§cBu komutu kullanmak için yetkin yok.");
+            PlayerMessages.send(sender, "§cʙᴜ ᴋᴏᴍᴜᴛ ɪᴄɪɴ ʏᴇᴛᴋɪɴ ʏᴏᴋ.");
             return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
             reloadHook();
-            sender.sendMessage("§aUXMFarmer oto eritme ayarları yeniden yüklendi.");
+            PlayerMessages.send(sender, "§aᴜxᴍғᴀʀᴍᴇʀ ᴏᴛᴏ ᴇʀɪᴛᴍᴇ ᴀʏᴀʀʟᴀʀɪ ʏᴇɴɪʟᴇɴᴅɪ.");
             return true;
         }
-        sender.sendMessage("§eKullanım: /" + label + " reload");
+        PlayerMessages.send(sender, "§eᴋᴜʟʟᴀɴɪᴍ: /" + label + " reload");
         return true;
     }
 }
