@@ -6,6 +6,7 @@ authors:
   - BlokOyun
 description: UXMFarmer toplama olayları için config tabanlı otomatik eritme ve komut hook'u.
 softdepend:
+  - uxmFarmer
   - Farmer
 commands:
   uxmfarmerotosmelter:

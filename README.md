@@ -18,4 +18,8 @@ Varsayılan `trigger: click` ayarında toplama olayı otomatik eritme başlatmaz
 
 Farmer v6 için GUI bağlantısı `Farmer` eklenti adı ve `xyz.geik.farmer.api.handlers.FarmerMainGuiOpenEvent` sözleşmesini otomatik bulur. Başka bir UXMFarmer fork'u kullanıyorsanız `hook.plugin-name` ve `hook.event-class` alanlarını kendi public event sınıfınıza göre değiştirin.
 
-`/uxmfarmerotosmelter reload` config'i yeniden yükler. Reload veya kapatma sırasında açık oto eritme menüleri kapanır; devam eden işlemler kaynak tüketmeden iptal edilir.
+`/uxmfarmerotosmelter reload` config'i yeniden yükler. `/otoeritme status` menü bağlantısının aktif, kapalı veya bağlantı bekliyor olduğunu gösterir. Reload veya kapatma sırasında açık oto eritme menüleri kapanır; devam eden işlemler kaynak tüketmeden iptal edilir.
+
+UXMFarmer 3.18 için eklenti adı `uxmFarmer`, ana menü olayı `com.uxplima.uxmfarmer.api.event.impl.FarmerOpenMainMenuEvent` sınıfıdır. Eski config dosyalarındaki `hook.plugin-name: Farmer` değeri de desteklenir. Bağlantı her iki eklenti adını kontrol eder. `gui.rows` eritme menüsünün ayarıdır; farmer ana menüsünün aynı boyutta olması gerekmez. `gui.slot` ana menüde boş veya dolgu olarak kullanılan bir slot olmalıdır; başka bir aktif düğmenin üzerine yazılmaz. Varsayılan slot `7`, UXMFarmer 3.18'in ana menüsünde dolgu slotudur.
+
+Düğme görünmüyorsa `/otoeritme status` çıktısını ve başlangıç logundaki `Farmer GUI oto eritme düğmesi aktif` satırını kontrol edin. Farmer lisans, veritabanı veya başka bir başlangıç hatası yüzünden devre dışı kalmışsa önce Farmer'ın başlangıç hatası giderilmelidir.

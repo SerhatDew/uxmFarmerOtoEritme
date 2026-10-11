@@ -52,6 +52,8 @@ final class SmeltGuiHook implements Listener {
     private BukkitTask ticker;
     private boolean registered;
     private boolean warned;
+    private boolean dependencyWarned;
+    private boolean occupiedSlotWarned;
     private long generation;
 
     SmeltGuiHook(JavaPlugin plugin, RuleConfiguration configuration) {
@@ -61,8 +63,16 @@ final class SmeltGuiHook implements Listener {
 
     boolean register() {
         if (registered || !configuration.enabled() || !configuration.guiSettings().enabled()) return true;
-        Plugin dependency = Bukkit.getPluginManager().getPlugin(configuration.pluginName());
-        if (dependency == null || !dependency.isEnabled()) return false;
+        Plugin dependency = FarmerDependency.find(Bukkit.getPluginManager(), configuration.pluginName());
+        if (dependency == null || !dependency.isEnabled()) {
+            if (!dependencyWarned) {
+                plugin.getLogger().warning("Farmer GUI bağlanamadı: Farmer eklentisi bulunamadı veya etkin değil. "
+                        + "Farmer etkinleşince bağlantı yeniden denenecek.");
+                dependencyWarned = true;
+            }
+            return false;
+        }
+        dependencyWarned = false;
         try {
             Class<?> event = null;
             for (String eventName : OPEN_EVENTS) {
@@ -79,7 +89,8 @@ final class SmeltGuiHook implements Listener {
             Bukkit.getPluginManager().registerEvents(this, plugin);
             ticker = Bukkit.getScheduler().runTaskTimer(plugin, this::tickOperations, 5L, 5L);
             registered = true;
-            plugin.getLogger().info("Farmer GUI oto eritme düğmesi aktif; yetki: " + USE_PERMISSION);
+            plugin.getLogger().info("Farmer GUI oto eritme düğmesi aktif: " + dependency.getName()
+                    + "; slot: " + configuration.guiSettings().slot() + "; yetki: " + USE_PERMISSION);
             return true;
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ex) {
             HandlerList.unregisterAll(this);
@@ -89,6 +100,10 @@ final class SmeltGuiHook implements Listener {
             }
             return false;
         }
+    }
+
+    boolean isRegistered() {
+        return registered;
     }
 
     void shutdown() {
@@ -136,7 +151,12 @@ final class SmeltGuiHook implements Listener {
         if (!(event.getPlayer() instanceof Player player)) return;
         Inventory inventory = event.getInventory();
         PendingMenu request = pending.get(player.getUniqueId());
-        if (request == null || inventory.getSize() != configuration.guiSettings().rows() * 9) return;
+        if (request == null) return;
+        if (inventory.getSize() <= configuration.guiSettings().slot()
+                || inventory.getType() != org.bukkit.event.inventory.InventoryType.CHEST) {
+            plugin.getLogger().fine("Farmer menüsü düğme için uygun değil: boyut=" + inventory.getSize());
+            return;
+        }
         pending.remove(player.getUniqueId());
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (registered && player.isOnline() && player.getOpenInventory().getTopInventory() == inventory) {
@@ -152,7 +172,14 @@ final class SmeltGuiHook implements Listener {
             Class<?> itemType = Class.forName(GUI_PACKAGE + "guis.GuiItem", true, loader);
             Class<?> actionType = Class.forName(GUI_PACKAGE + "components.GuiAction", true, loader);
             Object existing = holder.getClass().getMethod("getGuiItem", int.class).invoke(holder, slot);
-            if (existing != null && itemType.getMethod("getAction").invoke(existing) != null) return;
+            if (existing != null && itemType.getMethod("getAction").invoke(existing) != null) {
+                if (!occupiedSlotWarned) {
+                    plugin.getLogger().warning("Oto eritme düğmesi eklenemedi: gui.slot=" + slot
+                            + " Farmer menüsündeki başka bir düğme tarafından kullanılıyor. Boş bir slot seçin.");
+                    occupiedSlotWarned = true;
+                }
+                return;
+            }
             Object action = Proxy.newProxyInstance(loader, new Class<?>[] {actionType}, (proxy, method, args) -> {
                 if (method.getName().equals("execute") && args != null && args.length == 1
                         && args[0] instanceof InventoryClickEvent click

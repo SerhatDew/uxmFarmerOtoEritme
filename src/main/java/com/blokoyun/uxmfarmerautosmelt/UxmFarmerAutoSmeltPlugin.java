@@ -76,7 +76,17 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
             PlayerMessages.send(sender, "§aᴜxᴍғᴀʀᴍᴇʀ ᴏᴛᴏ ᴇʀɪᴛᴍᴇ ᴀʏᴀʀʟᴀʀɪ ʏᴇɴɪʟᴇɴᴅɪ.");
             return true;
         }
-        PlayerMessages.send(sender, "§eᴋᴜʟʟᴀɴɪᴍ: /" + label + " reload");
+        if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
+            if (!configuration.enabled() || !configuration.guiSettings().enabled()) {
+                PlayerMessages.send(sender, "§eᴏᴛᴏ ᴇʀɪᴛᴍᴇ ᴍᴇɴᴜsᴜ ᴀʏᴀʀʟᴀʀᴅᴀ ᴋᴀᴘᴀʟɪ.");
+            } else if (smeltGuiHook != null && smeltGuiHook.isRegistered()) {
+                PlayerMessages.send(sender, "§aᴏᴛᴏ ᴇʀɪᴛᴍᴇ ᴍᴇɴᴜ ʙᴀɢʟᴀɴᴛɪsɪ ᴀᴋᴛɪꜰ.");
+            } else {
+                PlayerMessages.send(sender, "§cꜰᴀʀᴍᴇʀ ʙᴀɢʟᴀɴᴛɪsɪ ᴋᴜʀᴜʟᴀᴍᴀᴅɪ. §7ᴋᴏɴsᴏʟᴅᴀᴋɪ ᴜʏᴀʀɪʏɪ ᴋᴏɴᴛʀᴏʟ ᴇᴛ.");
+            }
+            return true;
+        }
+        PlayerMessages.send(sender, "§eᴋᴜʟʟᴀɴɪᴍ: /" + label + " reload | status");
         return true;
     }
 }

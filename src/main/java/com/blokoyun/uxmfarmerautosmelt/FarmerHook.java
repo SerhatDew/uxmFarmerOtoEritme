@@ -42,7 +42,7 @@ final class FarmerHook {
             plugin.getLogger().info("Hook config.yml içinde devre dışı bırakıldı.");
             return true;
         }
-        Plugin dependency = Bukkit.getPluginManager().getPlugin(configuration.pluginName());
+        Plugin dependency = FarmerDependency.find(Bukkit.getPluginManager(), configuration.pluginName());
         if (dependency == null || !dependency.isEnabled()) {
             if (!dependencyWarningLogged) {
                 plugin.getLogger().warning("UXMFarmer bulunamadı veya etkin değil; hook daha sonra yeniden denenecek.");
