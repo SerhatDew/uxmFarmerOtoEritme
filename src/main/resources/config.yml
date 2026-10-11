@@ -7,7 +7,7 @@ trigger: click # click = sadece farmer GUI düğmesi, automatic = toplama event'
 # bağımlılık sürümünü değiştirmek gerekmez.
 hook:
   plugin-name: uxmFarmer
-  event-class: xyz.geik.farmer.api.handlers.FarmerItemCollectEvent
+  event-class: com.uxplima.uxmfarmer.api.event.impl.FarmerCollectProductEvent
   priority: NORMAL
 
 # Bir eşleşen kuralda belirtilmeyen alanlar burada kullanılır.

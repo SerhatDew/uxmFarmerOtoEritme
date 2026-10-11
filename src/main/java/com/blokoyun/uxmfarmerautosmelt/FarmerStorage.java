@@ -51,6 +51,14 @@ final class FarmerStorage {
         return item == null ? 0 : number(item, "getAmount");
     }
 
+    void consume(UUID farmerId, Material material, int amount) throws ReflectiveOperationException {
+        if (amount <= 0) return;
+        Object item = item(farmer(farmerId), material);
+        if (item == null || number(item, "getAmount") < amount) throw new IllegalStateException("Farmer deposu tüketim için yetersiz");
+        try { item.getClass().getMethod("removeAmount", int.class).invoke(item, amount); }
+        catch (NoSuchMethodException ignored) { set(item, number(item, "getAmount") - amount); }
+    }
+
     StockSnapshot snapshot(UUID farmerId, SmeltRecipe recipe) throws ReflectiveOperationException {
         ensureSingleServer();
         Object farmer = farmer(farmerId);
@@ -146,6 +154,11 @@ final class FarmerStorage {
             throw new IllegalStateException("UXMFarmer sayısal API değeri uyumsuz: " + method);
         }
         return number.intValue();
+    }
+
+    private static void set(Object item, int value) throws ReflectiveOperationException {
+        try { item.getClass().getMethod("setAmount", int.class).invoke(item, value); }
+        catch (NoSuchMethodException ignored) { item.getClass().getMethod("setAmount", long.class).invoke(item, (long) value); }
     }
 
     record StockSnapshot(Object source, int sourceAmount, Object destination, int destinationAmount,

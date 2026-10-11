@@ -31,7 +31,8 @@ final class FarmerReflection {
             Object item = event.getClass().getMethod("getItem").invoke(event);
             materialMethod = item.getClass().getMethod("getType");
             amountMethod = event.getClass().getMethod("getCollectAmount");
-            farmerUuidMethod = farmer.getClass().getMethod("getOwnerUUID");
+            try { farmerUuidMethod = farmer.getClass().getMethod("getId"); }
+            catch (NoSuchMethodException ignored) { farmerUuidMethod = farmer.getClass().getMethod("getOwnerUUID"); }
             setAmountMethod = event.getClass().getMethod("setCancelled", boolean.class);
             Object material = materialMethod.invoke(item);
             Object amount = amountMethod.invoke(event);

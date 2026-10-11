@@ -163,7 +163,10 @@ final class FarmerHook {
             // A command can have side effects before Bukkit reports false. Once any
             // command was attempted, leave the event consumed to prevent duplication.
             if (rule.consume() && attemptedCommands > 0) {
-                data.setAmount(event, 0);
+                // The collect event is raised after UXMFarmer has stored the item.
+                // Mutating its event amount alone cannot undo that storage and caused
+                // command rewards to duplicate products. Debit the same stock record.
+                new FarmerStorage(dependency).consume(data.farmerUuid(), data.material(), data.amount());
             }
         } catch (ReflectiveOperationException | RuntimeException ex) {
             plugin.getLogger().warning("UXMFarmer toplama hook'u çalıştırılamadı: " + ex.getMessage());
