@@ -1,3 +1,4 @@
+config-version: 1
 enabled: true
 trigger: click # click = sadece farmer GUI düğmesi, automatic = toplama event'i
 
@@ -39,6 +40,12 @@ gui:
 
 # Anahtarlar Bukkit Material adlarıdır. Büyük/küçük harf fark etmez.
 items:
+  RAW_IRON:
+    mode: commands
+    min-amount: 1
+    consume: true
+    commands:
+      - 'give %player% iron_ingot %amount%'
   IRON_ORE:
     mode: commands
     min-amount: 1

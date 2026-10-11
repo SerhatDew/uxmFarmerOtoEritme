@@ -14,6 +14,8 @@ Varsayılan `trigger: click` ayarında toplama olayı otomatik eritme başlatmaz
 
 `min-amount`, `max-amount` (`0` sınırsız), `duration-seconds` ve `batch-size` her item için ayrı verilebilir. `permission` item bazında ek izin ister. Komut yer tutucuları `%player%`, `%uuid%`, `%owner%`, `%item%`, `%amount%`, `%farmer_uuid%` ve süslü parantezli karşılıklarıdır.
 
+Ham demir (`RAW_IRON`) ayrı bir tariftir; demir cevheri (`IRON_ORE`) stokuyla birleştirilmez. Varsayılan ham demir tarifi farmer deposundan ham demir tüketip aynı miktarda demir külçesini oyuncuya verir. Örneğin 3 ham demir, 10 saniye sonunda 3 külçe verir. Eski config dosyası açılışta veya reload sırasında bir kez güncellenir; eksik ham demir tarifi eklenir, mevcut özel tarifler korunur. Güncelleme sonrası `config-version: 1` tutulur.
+
 `trigger: automatic` yalnız geriye dönük event hook'unu açar; yeni kurulumlarda önerilen ve varsayılan kullanım `click` modudur. `hook.event-class` ve `hook.plugin-name` değiştirilebilir. Farmer sunucu açılışında geç gelirse hook ve GUI bağlantısı otomatik olarak yeniden denenir.
 
 Farmer v6 için GUI bağlantısı `Farmer` eklenti adı ve `xyz.geik.farmer.api.handlers.FarmerMainGuiOpenEvent` sözleşmesini otomatik bulur. Başka bir UXMFarmer fork'u kullanıyorsanız `hook.plugin-name` ve `hook.event-class` alanlarını kendi public event sınıfınıza göre değiştirin.

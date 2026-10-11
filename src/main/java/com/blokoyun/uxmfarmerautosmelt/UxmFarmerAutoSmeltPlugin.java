@@ -3,7 +3,11 @@ package com.blokoyun.uxmfarmerautosmelt;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.File;
+import java.io.IOException;
 
 public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements CommandExecutor {
     private FarmerHook hook;
@@ -33,6 +37,7 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
     }
 
     private void reloadHook() {
+        migrateConfiguration();
         reloadConfig();
         configuration = RuleConfiguration.load(this);
         if (hook == null) {
@@ -48,6 +53,19 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
         smeltGuiHook = new SmeltGuiHook(this, configuration);
         boolean guiReady = smeltGuiHook.register();
         if (!hookReady || !guiReady) scheduleHookRetry();
+    }
+
+    private void migrateConfiguration() {
+        File file = new File(getDataFolder(), "config.yml");
+        YamlConfiguration disk = YamlConfiguration.loadConfiguration(file);
+        if (ConfigurationMigration.upgrade(disk)) {
+            try {
+                disk.save(file);
+                getLogger().info("Eritme config'i güncellendi; mevcut özel tarifler korundu.");
+            } catch (IOException ex) {
+                throw new IllegalStateException("Eritme config'i güncellenemedi", ex);
+            }
+        }
     }
 
     private void scheduleHookRetry() {
