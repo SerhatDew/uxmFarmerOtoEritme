@@ -1,4 +1,4 @@
-config-version: 1
+config-version: 2
 enabled: true
 trigger: click # click = sadece farmer GUI düğmesi, automatic = toplama event'i
 
@@ -15,7 +15,7 @@ defaults:
   mode: plugin # plugin: ürünü UXMFarmer depolasın, commands: aşağıdaki komutları çalıştır
   min-amount: 1
   max-amount: 0 # 0 = sınırsız
-  consume: false # commands modunda ürünü UXMFarmer deposuna ekleme
+  consume: false # automatic commands modunda Farmer'ın eklediği kaynağı depodan düşür
   permission: ''
   commands: []
 
@@ -41,23 +41,17 @@ gui:
 # Anahtarlar Bukkit Material adlarıdır. Büyük/küçük harf fark etmez.
 items:
   RAW_IRON:
-    mode: commands
+    mode: plugin
+    output-material: IRON_INGOT
     min-amount: 1
-    consume: true
-    commands:
-      - 'give %player% iron_ingot %amount%'
   IRON_ORE:
-    mode: commands
+    mode: plugin
+    output-material: IRON_INGOT
     min-amount: 1
-    consume: true
-    commands:
-      - 'give %player% iron_ingot %amount%'
   GOLD_ORE:
-    mode: commands
+    mode: plugin
+    output-material: GOLD_INGOT
     min-amount: 1
-    consume: true
-    commands:
-      - 'give %player% gold_ingot %amount%'
   # DIAMOND_ORE:
   #   mode: plugin
   #   output-material: DIAMOND

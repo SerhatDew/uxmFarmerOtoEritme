@@ -3,6 +3,8 @@ package com.blokoyun.uxmfarmerautosmelt;
 import org.bukkit.Material;
 import org.bukkit.plugin.Plugin;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 import java.util.Map;
@@ -12,31 +14,48 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class FarmerStorageTest {
-    @Test
-    void threeRawIronAreReadAndConsumedAsThreeIngots() throws Exception {
+    @ParameterizedTest
+    @CsvSource({"RAW_IRON, IRON_INGOT", "IRON_ORE, IRON_INGOT", "GOLD_ORE, GOLD_INGOT"})
+    void smeltedItemsAreAddedToSameFarmerWithoutCommands(Material source, Material output) throws Exception {
         Plugin plugin = mock(Plugin.class);
         when(plugin.isEnabled()).thenReturn(true);
         FarmerStorage storage = new FarmerStorage(plugin);
-        UUID farmerId = UUID.randomUUID();
-        StoredItem item = new StoredItem(3);
-        storage.bind(farmerId, new StoredFarmer(Map.of(Material.RAW_IRON, item)));
-        assertEquals(0, storage.amount(farmerId, Material.IRON_ORE));
-        assertEquals(3, storage.amount(farmerId, Material.RAW_IRON));
-        ItemRule rule = new ItemRule(Material.RAW_IRON, ItemRule.RuleMode.COMMANDS,
-                1, 0, true, "", List.of("give %player% iron_ingot %amount%"));
-        SmeltRecipe recipe = new SmeltRecipe(rule, Material.IRON_INGOT, 10, 64);
+        UUID farmerId = new UUID(0, 1);
+        Material otherSource = source == Material.RAW_IRON ? Material.IRON_ORE : Material.RAW_IRON;
+        StoredItem sourceItem = new StoredItem(3);
+        StoredItem ingots = new StoredItem(5);
+        StoredItem otherItem = new StoredItem(17);
+        storage.bind(farmerId, new StoredFarmer(Map.of(source, sourceItem, output, ingots, otherSource, otherItem)));
+        ItemRule rule = new ItemRule(source, ItemRule.RuleMode.PLUGIN, 1, 0, false, "", List.of());
+        SmeltRecipe recipe = new SmeltRecipe(rule, output, 10, 64);
         FarmerStorage.StockSnapshot snapshot = storage.snapshot(farmerId, recipe);
-        int amount = recipe.amountFor(snapshot.sourceAmount());
-        assertEquals(3, amount);
-        String command = CommandContext.of(Material.RAW_IRON, amount, "Oyuncu", "", farmerId.toString())
-                .apply(rule.commands().getFirst());
+        assertEquals(3, sourceItem.getAmount(), "Bekleme süresinde kaynak tüketilmemeli");
+        assertEquals(5, ingots.getAmount());
         assertEquals(SmeltTransaction.Result.COMPLETED, SmeltTransaction.complete(snapshot,
-                rule.mode(), amount, List.of(command), actual -> {
-                    assertEquals(0, item.getAmount(), "Stok ödülden önce tüketilmeli");
-                    assertEquals("give Oyuncu iron_ingot 3", actual);
-                    return true;
-                }));
-        assertEquals(0, item.getAmount());
+                rule.mode(), recipe.amountFor(snapshot.sourceAmount()), List.of(),
+                command -> { throw new AssertionError("Envanter ödülü için komut çalıştırılmamalı"); }));
+        assertEquals(0, storage.amount(farmerId, source));
+        assertEquals(8, storage.amount(farmerId, output), "Mevcut külçeler korunarak aynı depoya eklenmeli");
+        assertEquals(17, storage.amount(farmerId, otherSource));
+    }
+
+    @Test
+    void insufficientIngotCapacityLeavesSourceAndDestinationUnchanged() throws Exception {
+        Plugin plugin = mock(Plugin.class);
+        when(plugin.isEnabled()).thenReturn(true);
+        FarmerStorage storage = new FarmerStorage(plugin);
+        UUID farmerId = new UUID(0, 1);
+        StoredItem source = new StoredItem(3);
+        StoredItem output = new StoredItem(7);
+        storage.bind(farmerId, new StoredFarmer(Map.of(Material.RAW_IRON, source, Material.IRON_INGOT, output)));
+        ItemRule rule = new ItemRule(Material.RAW_IRON, ItemRule.RuleMode.PLUGIN, 1, 0, false, "", List.of());
+        FarmerStorage.StockSnapshot snapshot = storage.snapshot(farmerId,
+                new SmeltRecipe(rule, Material.IRON_INGOT, 10, 64));
+        assertEquals(SmeltTransaction.Result.DESTINATION_FULL, SmeltTransaction.complete(snapshot,
+                rule.mode(), 3, List.of(),
+                command -> { throw new AssertionError("Komut çalıştırılmamalı"); }));
+        assertEquals(3, source.getAmount());
+        assertEquals(7, output.getAmount());
     }
 
     public static class StoredFarmer {
@@ -50,6 +69,11 @@ class FarmerStorageTest {
         StoredItem(int amount) { this.amount = amount; }
         public int getAmount() { return amount; }
         public boolean isLocked() { return false; }
+        public StoredLevel getCurrentLevel() { return new StoredLevel(); }
         public void setAmount(int amount) { this.amount = amount; }
+    }
+
+    public static class StoredLevel {
+        public int getCapacity() { return 8; }
     }
 }
