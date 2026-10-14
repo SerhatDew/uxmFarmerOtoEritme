@@ -10,7 +10,7 @@ Farmer deposundaki pişmemiş metal cevherlerini tıklama gerektirmeden eritip a
 
 ![Süreli ham demir eritme akışı](assets/smelting-flow.gif)
 
-*Temsili işleyiş animasyonu; oyun içi kayıt değildir. Animasyon hızlandırılmıştır; varsayılan işlem süresi 10 saniyedir.*
+*Temsili işleyiş animasyonu; oyun içi kayıt değildir. Otomatik izni verilmiş, beklemesiz izni olmayan bir Farmer'ı gösterir. Animasyon hızlandırılmıştır; varsayılan işlem süresi 10 saniyedir.*
 
 ## İçindekiler
 
@@ -32,13 +32,15 @@ Farmer deposundaki pişmemiş metal cevherlerini tıklama gerektirmeden eritip a
 
 ## Çalışma şekli
 
-Varsayılan `automatic-smelting.enabled: true` ayarında Farmer depoları düzenli taranır. Uygun miktarda pişmemiş cevher bulunduğunda süreli eritme otomatik başlar; menüye tıklamak veya menüyü açık tutmak gerekmez. GUI kapalıyken de otomatik işlemler çalışır. Sınırsız demir üretimi diğer cevherlerin işlenmesini engellemesin diye tarifler sırayla değerlendirilir.
+Varsayılan `automatic-smelting.enabled: true` ayarında Farmer depoları düzenli taranır. Sahibi çevrimiçi ve `uxmfarmerotosmelter.auto` iznine sahip olan Farmer'da uygun miktarda pişmemiş cevher bulunduğunda eritme otomatik başlar; menüye tıklamak veya menüyü açık tutmak gerekmez. GUI kapalıyken de çalışır. Tarifler sırayla değerlendirilir.
 
 Demir, altın ve bakırın ham, normal cevher ve derin kayrak varyantları ile Nether altın cevheri desteklenir. Yalnızca `items` altında tanımlı metal cevheri `plugin` tarifleri otomatik işlenir; özel komut tarifleri otomatik komut çalıştırmaz.
 
-Farmer ana menüsündeki `gui.slot` düğmesinden ürün menüsüne girip manuel işlem başlatmak da mümkündür. Aynı Farmer'da otomatik ve manuel işlemler çakışamaz; aynı oyuncu iki manuel işlem başlatamaz. Manuel işlemler boss bar gösterir. Menü kapatılınca işlem devam eder; oyuncu çıkarsa yalnızca onun manuel işlemi iptal edilir.
+Farmer ana menüsündeki `gui.slot` düğmesinden manuel işlem başlatmak da mümkündür. Aynı Farmer'da otomatik ve manuel işlemler çakışamaz; aynı oyuncu iki süreli manuel işlem başlatamaz. Süreli manuel işlemler boss bar gösterir. Menü kapatılınca işlem devam eder.
 
-Manuel kullanımda başlangıçta ve tamamlanmadan hemen önce sahip/üye ilişkisi, `uxmfarmerotosmelter.use`, `gui.permission` ve tarif izni kontrol edilir. Otomatik kullanım sunucu ayarıyla açılır; varsayılan tarifler sahibi çevrimdışıyken de çalışır. Ek izin isteyen bir tarif, sahibinin çevrimiçi olması ve ilgili izne sahip olması koşuluyla otomatik işlenir.
+Manuel kullanımda sahip/üye ilişkisi, `uxmfarmerotosmelter.use`, `gui.permission` ve tarif izni kontrol edilir. Otomatik kullanımda Farmer sahibinin `automatic-smelting.permission` ve varsa tarif izni başlangıçta ve tamamlanırken kontrol edilir. Varsayılan VIP otomatiği çevrimdışıyken çalışmaz; izin kaybında kaynak tüketilmez. Manuel işlem oyuncu çıkınca iptal edilir.
+
+`uxmfarmerotosmelter.instant` izni manuel kullanımda işlemi başlatan oyuncunun, otomatik kullanımda Farmer sahibinin beklemesini kaldırır. Tek başına otomatik çalışma, GUI erişimi veya tarif izni vermez; kapasite ve miktar kontrolleri korunur. Otomatik beklemesiz işlem ilk uygun taramada tamamlanır; tarama aralığı ve parti sınırı devam eder.
 
 Varsayılan tarif ham demirden (`RAW_IRON`) demir külçesi üretir. Örneğin depoda 3 ham demir varsa, 10 saniye sonunda aynı Farmer deposundan 3 ham demir düşülür ve depodaki `IRON_INGOT` miktarı 3 artırılır. **Oyuncu envanterine eşya verilmez.** Bekleme sırasında kaynak tüketilmez. `RAW_IRON` ve `IRON_ORE` stokları birbirine karıştırılmaz.
 
@@ -60,11 +62,13 @@ Ayar dosyası `plugins/uxmFarmerOtoEritme/config.yml` konumunda oluşturulur; pa
 - Varsayılan `mode: plugin`, kaynağı düşürüp `output-material` ürününü **aynı Farmer deposuna** ekler; oyuncuya ödül komutu çalıştırmaz. Alan verilmezse tanınan malzemelerin varsayılan eritme eşleşmesi kullanılır; geçersiz tarifler loglanıp atlanır. İsteğe bağlı `mode: commands`, kaynağı düşürüp özel `commands` listesini konsoldan çalıştırır.
 - `min-amount`, `max-amount` (`0` sınırsız), `duration-seconds` ve `batch-size` item başına ayarlanabilir. `batch-size: 0`, uygun stoğun tamamıdır.
 - `automatic-smelting.enabled` depodan otomatik eritmenin anahtarıdır; `interval-ticks` tarama aralığıdır (varsayılan: 20 tick).
+- `automatic-smelting.permission` varsayılan olarak `uxmfarmerotosmelter.auto` ister. `''` verilirse otomatik eritme herkese açılır; ek tarif izni yoksa çevrimdışı da çalışabilir.
+- `instant-smelting.permission` varsayılan olarak `uxmfarmerotosmelter.instant` ister; `''` beklemesiz özelliğini kapatır.
 - Komut yer tutucuları `%player%`, `%uuid%`, `%owner%`, `%item%`, `%amount%`, `%farmer_uuid%` ve süslü parantezli karşılıklarıdır.
 - `gui.rows` eritme menüsünün boyutudur; farmer ana menüsünün aynı boyutta olması gerekmez. `gui.slot` farmer ana menüsündeki düğme yeridir; dolu aktif bir düğmenin üzerine yazılmaz. Varsayılan slot `7`, UXMFarmer 3.18 ana menüsünde dolgu slotudur.
 - GUI boyutu 3–6 satırla sınırlıdır; varsayılan 6 satırda 28 ürün gösterilir. Slot ve dolu/işgal edilmiş menü güvenliği kontrol edilir.
 
-Eski config açılışta veya reload sırasında `config-version: 3`'e güncellenir. Önceki varsayılan `RAW_IRON`, `IRON_ORE` ve `GOLD_ORE` envantere verme tarifleri depoya yazan `plugin` tariflerine dönüştürülür; miktar, süre ve izin ayarları korunur. Yeni cevher varyantları yalnızca eksikse eklenir. Özel tarifler/metinler korunur; önceki sürümlerde bilerek kaldırılmış eski varsayılan tarifler yeniden eklenmez.
+Eski config açılışta veya reload sırasında `config-version: 4`'e güncellenir. Eksik VIP izin alanları eklenir; özel izin değerleri korunur. v3'ten yükseltme tariflere dokunmaz. Daha eski sürümlerdeki varsayılan envantere verme tarifleri depoya yazan tariflere dönüştürülür ve v3 cevher varyantları eklenir; özel tarifler/metinler korunur.
 
 `trigger: automatic` eski toplama-event/komut hook'unu açar; **depodan otomatik eritme ayarı değildir**. Yeni depodan eritme `automatic-smelting.enabled` ile kontrol edilir. Farmer sunucu açılışında geç gelirse işlem ve GUI bağlantısı otomatik olarak yeniden denenir.
 
@@ -75,6 +79,9 @@ trigger: click
 automatic-smelting:
   enabled: true
   interval-ticks: 20
+  permission: uxmfarmerotosmelter.auto
+instant-smelting:
+  permission: uxmfarmerotosmelter.instant
 gui:
   title: '<black><bold>Oto Eritme'
   filler-material: GRAY_STAINED_GLASS_PANE
@@ -105,6 +112,18 @@ Folia desteklenmez. Paper 26.2 ve Java 25 ile canlı sunucu çalışması doğru
 - `/otoeritme status` — Farmer bağlantısını, menü durumunu ve otomatik eritmenin durumunu gösterir.
 - `uxmfarmerotosmelter.use` — GUI'den eritme başlatma (varsayılan: op).
 - `uxmfarmerotosmelter.admin` — reload ve yönetim (varsayılan: op).
+- `uxmfarmerotosmelter.auto` — Farmer sahibine otomatik eritme (varsayılan: false; OP dahil kendiliğinden verilmez).
+- `uxmfarmerotosmelter.instant` — işlem süresini atlama (varsayılan: false; otomatik izin ayrıca gerekir).
+
+LuckPerms kullanıyorsanız VIP grubuna açıkça verin:
+
+```text
+lp group vip permission set uxmfarmerotosmelter.use true
+lp group vip permission set uxmfarmerotosmelter.auto true
+lp group vip permission set uxmfarmerotosmelter.instant true
+```
+
+Normal oyuncuların manuel eritmesi için `uxmfarmerotosmelter.use` iznini ilgili gruba ayrıca verin. VIP avantajları için `admin` izni gerekmez.
 
 Reload veya eklentinin kapanması sırasında açık eritme menüleri kapanır; devam eden tüm işlemler kaynak tüketmeden iptal edilir. Normal menü kapatma işlemi iptal etmez. Farmer'ın geç açılması durumunda bağlantı yeniden denenir; oyuncunun bağlantısı koparsa yalnızca manuel işlemi iptal edilir.
 
@@ -117,7 +136,7 @@ Reload veya eklentinin kapanması sırasında açık eritme menüleri kapanır; 
 | Oyuncu işlem başlatamıyor | Farmer sahibi/üye ilişkisini, `uxmfarmerotosmelter.use`, `gui.permission` ve tarifin ek iznini kontrol edin. |
 | Bir tarif menüde görünmüyor | Material adını, `output-material` veya komut listesini ve logdaki atlanan tarif uyarısını kontrol edin. |
 | Eritme tamamlanmıyor | Kaynak miktarını, çıktı malzemesinin Farmer'da tanımlı olmasını, hedef depo kapasitesini ve tamamlanma anındaki erişim izinlerini kontrol edin. |
-| Depodaki cevherler otomatik işlenmiyor | `automatic-smelting.enabled`, `/otoeritme status`, tarifin `plugin` modu ve çıktı deposunun kapasitesini kontrol edin. Ek izinli tarifte sahibi çevrimiçi olmalıdır. |
+| Depodaki cevherler otomatik işlenmiyor | `automatic-smelting.enabled`, Farmer sahibinin çevrimiçi ve `automatic-smelting.permission` iznine sahip olması, tarifin ek izni, `plugin` modu ve depo kapasitesini kontrol edin. |
 | Özel komut tarifinde komut başarısız ama kaynak düşmüş | Komutların yan etkileri geri alınamaz; kaynak bilerek iade edilmez. Konsol komutunu ve hata logunu kontrol edin. Varsayılan depoya eritme tarifleri komut çalıştırmaz. |
 
 Farmer lisans, veritabanı veya başka bir başlangıç hatası nedeniyle devre dışıysa önce Farmer'ın kendi başlangıç hatasını giderin. Sorun bildirirken sunucu, Java ve Farmer sürümleriyle `/otoeritme status` çıktısını ve ilgili konsol hatasını ekleyin.

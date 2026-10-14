@@ -10,7 +10,7 @@ A Paper plugin that automatically smelts uncooked metal ores already in Farmer s
 
 ![Timed raw iron smelting flow](assets/smelting-flow.gif)
 
-*Illustrative workflow animation, not gameplay footage. The animation is accelerated; the default operation takes 10 seconds.*
+*Illustrative workflow animation, not gameplay footage. It shows a Farmer with automatic permission but without instant permission. The animation is accelerated; the default operation takes 10 seconds.*
 
 ## Contents
 
@@ -32,13 +32,15 @@ A Paper plugin that automatically smelts uncooked metal ores already in Farmer s
 
 ## How it works
 
-With the default `automatic-smelting.enabled: true`, Farmer storage is scanned regularly. A timed job starts automatically when sufficient uncooked ore is present; clicking or keeping a menu open is not required. Automatic processing also works with the GUI disabled. Recipes are considered in rotation so continuous iron production cannot starve other ores.
+With the default `automatic-smelting.enabled: true`, Farmer storage is scanned regularly. When its owner is online and has `uxmfarmerotosmelter.auto`, sufficient uncooked ore starts a job without clicking or keeping a menu open. It also works with the GUI disabled. Recipes are considered in rotation.
 
 Raw, normal, and deepslate iron/gold/copper variants, plus Nether gold ore, are supported. Only metal-ore `plugin` recipes configured under `items` are automated; custom command recipes never dispatch automatic reward commands.
 
-Manual smelting remains available through the `gui.slot` button in the Farmer main menu. Automatic and manual jobs cannot overlap on the same Farmer, and one player cannot start two manual jobs. Manual jobs display a boss bar. Closing the menu keeps the job running; quitting cancels only that player's manual job.
+Manual smelting remains available through the `gui.slot` button. Automatic and manual jobs cannot overlap on the same Farmer, and one player cannot start two timed manual jobs. Timed manual jobs display a boss bar. Closing the menu keeps the job running.
 
-Manual jobs recheck ownership/membership, `uxmfarmerotosmelter.use`, `gui.permission`, and the recipe permission at start and completion. Automatic processing is enabled by the server setting; default recipes work while the owner is offline. A recipe requiring an extra permission is automated only while its owner is online and has that permission.
+Manual jobs check ownership/membership, `uxmfarmerotosmelter.use`, `gui.permission`, and the recipe permission. Automatic jobs check the owner's `automatic-smelting.permission` and any recipe permission at start and completion. Default VIP automation does not run offline; permission loss preserves the source. Quitting cancels manual jobs.
+
+`uxmfarmerotosmelter.instant` skips the countdown for the initiating player in manual mode, or the Farmer owner in automatic mode. It grants neither automatic processing, GUI access, nor recipe permissions; capacity and amount checks remain. Instant automation completes on the first eligible scan, still respecting the scan interval and batch limit.
 
 The default recipe converts raw iron (`RAW_IRON`) to iron ingots. For example, with 3 raw iron in storage, after 10 seconds 3 raw iron are debited from the same Farmer and its `IRON_INGOT` stock increases by 3. **No items are given to the player's inventory.** Resources are not consumed during the countdown. `RAW_IRON` and `IRON_ORE` stock are separate.
 
@@ -60,11 +62,13 @@ The config is created at `plugins/uxmFarmerOtoEritme/config.yml`; packaged defau
 - The default `mode: plugin` debits the source and stores `output-material` in **the same Farmer**, without executing player reward commands. If omitted, recognized materials use their default smelting mapping; invalid recipes are logged and skipped. The optional `mode: commands` debits the source and executes a custom `commands` list from the console.
 - `min-amount`, `max-amount` (`0` means unlimited), `duration-seconds`, and `batch-size` can be set per item. `batch-size: 0` means the entire suitable stock.
 - `automatic-smelting.enabled` controls storage-based automatic smelting; `interval-ticks` is the scan interval (default: 20 ticks).
+- `automatic-smelting.permission` defaults to `uxmfarmerotosmelter.auto`. Set `''` to allow everyone; offline processing is then possible when no additional recipe permission is required.
+- `instant-smelting.permission` defaults to `uxmfarmerotosmelter.instant`; `''` disables instant processing.
 - Command placeholders are `%player%`, `%uuid%`, `%owner%`, `%item%`, `%amount%`, `%farmer_uuid%`, and their brace-wrapped equivalents.
 - `gui.rows` controls the smelting menu size; the farmer main menu does not need to have the same size. `gui.slot` is the button position in the farmer main menu; an occupied active button is never overwritten. The default slot is `7`, a filler slot in UXMFarmer 3.18's main menu.
 - GUI size is constrained to 3–6 rows; the default 6-row layout shows 28 products. Slot and occupied-inventory safety checks remain in place.
 
-On startup or reload, an old config is upgraded to `config-version: 3`. The previous bundled `RAW_IRON`, `IRON_ORE`, and `GOLD_ORE` inventory reward recipes are converted to storage-based `plugin` recipes while retaining amounts, durations, and permissions. New ore variants are added only if missing. Custom recipes/text are retained; original default recipes intentionally removed in earlier versions are not re-added.
+Startup or reload upgrades old configs to `config-version: 4`. Missing VIP permission fields are added while custom permission values are preserved. Upgrading from v3 does not change recipes. Older versions also migrate bundled inventory rewards to storage recipes and add the v3 ore variants; custom recipes/text are retained.
 
 `trigger: automatic` enables the old collection-event/command hook; **it does not control storage-based automatic smelting**. The new processing loop uses `automatic-smelting.enabled`. If Farmer loads late, the processing and GUI connections are retried automatically.
 
@@ -75,6 +79,9 @@ trigger: click
 automatic-smelting:
   enabled: true
   interval-ticks: 20
+  permission: uxmfarmerotosmelter.auto
+instant-smelting:
+  permission: uxmfarmerotosmelter.instant
 gui:
   title: '<black><bold>Oto Eritme'
   filler-material: GRAY_STAINED_GLASS_PANE
@@ -105,6 +112,18 @@ Folia is not supported. A live server running Paper 26.2 or Java 25 has not been
 - `/otoeritme status` — reports the Farmer connection, menu state, and automatic smelting status.
 - `uxmfarmerotosmelter.use` — start smelting from the GUI (default: op).
 - `uxmfarmerotosmelter.admin` — reload and administration (default: op).
+- `uxmfarmerotosmelter.auto` — automatic processing for the Farmer owner (default: false, including operators).
+- `uxmfarmerotosmelter.instant` — skip the countdown (default: false; automatic permission is still separate).
+
+With LuckPerms, explicitly grant these to the VIP group:
+
+```text
+lp group vip permission set uxmfarmerotosmelter.use true
+lp group vip permission set uxmfarmerotosmelter.auto true
+lp group vip permission set uxmfarmerotosmelter.instant true
+```
+
+Grant `uxmfarmerotosmelter.use` separately to normal groups that should use timed manual smelting. VIP benefits do not require the `admin` permission.
 
 Reload or plugin shutdown closes open smelting menus; all active jobs are cancelled without consuming resources. Normal menu closing does not cancel a job. The connection is retried if Farmer loads late; quitting cancels only the player's manual job.
 
@@ -117,7 +136,7 @@ Reload or plugin shutdown closes open smelting menus; all active jobs are cancel
 | A player cannot start smelting | Check farmer ownership/membership, `uxmfarmerotosmelter.use`, `gui.permission`, and the recipe's additional permission. |
 | A recipe is missing from the menu | Check the Material name, `output-material` or command list, and skipped-recipe warnings in the log. |
 | Smelting does not complete | Check source stock, the output material's Farmer configuration, destination capacity, and access permissions at completion. |
-| Stored ores are not processed automatically | Check `automatic-smelting.enabled`, `/otoeritme status`, the recipe's `plugin` mode, and output capacity. An extra-permission recipe requires its owner to be online. |
+| Stored ores are not processed automatically | Check `automatic-smelting.enabled`, whether the owner is online with `automatic-smelting.permission`, any recipe permission, `plugin` mode, and destination capacity. |
 | A custom recipe's command fails, but stock was debited | Command side effects cannot be rolled back; the source is deliberately not refunded. Check the console command and failure log. Default storage-based recipes do not execute commands. |
 
 If Farmer is disabled by a license, database, or other startup error, fix Farmer's own startup error first. Include the server, Java, and Farmer versions, `/otoeritme status`, and the relevant console error when reporting a problem.
