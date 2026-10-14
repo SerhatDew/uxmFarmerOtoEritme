@@ -4,3 +4,12 @@ target/
 .idea/
 .vscode/
 REF/
+ref/
+.github/
+.omp/
+.agents/
+lib/
+*.iml
+*.py
+__pycache__/
+.DS_Store
