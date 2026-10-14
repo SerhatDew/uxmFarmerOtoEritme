@@ -2,7 +2,15 @@
 
 [Türkçe](README.md)
 
+![Java 21+](https://img.shields.io/badge/Java-21%2B-f59e0b)
+![Paper API 1.21.1](https://img.shields.io/badge/Paper_API-1.21.1-38bdf8)
+[![GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-22c55e)](LICENSE)
+
 A Paper plugin that adds a click-driven, timed auto-smelting button to the UXMFarmer main farmer menu. Farmer classes are not used at compile time; event and API links are established at runtime through reflection.
+
+![Timed raw iron smelting flow](assets/smelting-flow.gif)
+
+*Illustrative workflow animation, not gameplay footage. The animation is accelerated; the default operation takes 10 seconds.*
 
 ## Contents
 

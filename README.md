@@ -2,7 +2,15 @@
 
 [English](README.en.md)
 
+![Java 21+](https://img.shields.io/badge/Java-21%2B-f59e0b)
+![Paper API 1.21.1](https://img.shields.io/badge/Paper_API-1.21.1-38bdf8)
+[![GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-22c55e)](LICENSE)
+
 UXMFarmer ana farmer menüsüne tıklamalı ve süreli otomatik eritme düğmesi ekleyen Paper eklentisi. Farmer sınıfları derleme zamanında kullanılmaz; event ve API bağlantıları çalışma anında, yansıma (reflection) ile kurulur.
+
+![Süreli ham demir eritme akışı](assets/smelting-flow.gif)
+
+*Temsili işleyiş animasyonu; oyun içi kayıt değildir. Animasyon hızlandırılmıştır; varsayılan işlem süresi 10 saniyedir.*
 
 ## İçindekiler
 
