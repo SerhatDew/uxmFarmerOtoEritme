@@ -130,4 +130,32 @@ class ConfigurationMigrationTest {
         reloaded.loadFromString(config.saveToString());
         assertFalse(ConfigurationMigration.upgrade(reloaded));
     }
+
+    @Test
+    void vipUpgradeDoesNotRestoreRemovedVariantsOrChangeExistingRecipes() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("config-version", 3);
+        config.set("items.RAW_IRON.mode", "plugin");
+        config.set("items.RAW_IRON.min-amount", 12);
+        Map<String, Object> items = Map.copyOf(config.getConfigurationSection("items").getValues(true));
+        assertTrue(ConfigurationMigration.upgrade(config));
+        assertEquals(items, config.getConfigurationSection("items").getValues(true));
+        assertFalse(config.contains("items.RAW_COPPER"));
+        assertEquals(RuleConfiguration.AUTO_PERMISSION, config.getString("automatic-smelting.permission"));
+        assertEquals(RuleConfiguration.INSTANT_PERMISSION, config.getString("instant-smelting.permission"));
+    }
+
+    @Test
+    void vipUpgradePreservesExplicitPublicAutomationAndCustomInstantPermission() throws Exception {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("config-version", 3);
+        config.set("automatic-smelting.permission", "");
+        config.set("instant-smelting.permission", "ranks.fast");
+        assertTrue(ConfigurationMigration.upgrade(config));
+        YamlConfiguration reloaded = new YamlConfiguration();
+        reloaded.loadFromString(config.saveToString());
+        assertEquals("", reloaded.getString("automatic-smelting.permission"));
+        assertEquals("ranks.fast", reloaded.getString("instant-smelting.permission"));
+        assertFalse(ConfigurationMigration.upgrade(reloaded));
+    }
 }

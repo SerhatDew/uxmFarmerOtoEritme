@@ -181,6 +181,10 @@ final class SmeltController implements Listener {
                 PlayerMessages.send(player, "§cᴅᴇᴘᴏ ᴠᴇʏᴀ ᴍɪᴋᴛᴀʀ sᴀʀᴛɪ ᴜʏɢᴜɴ ᴅᴇɢɪʟ.");
                 return;
             }
+            if (instant(player)) {
+                completeManual(new Operation(player.getUniqueId(), farmerId, recipe, amount, clock.getAsLong(), null), player);
+                return;
+            }
             BossBar bar = Bukkit.createBossBar("Eritiliyor", BarColor.YELLOW, BarStyle.SOLID);
             bar.setProgress(0.0);
             bar.addPlayer(player);
@@ -262,22 +266,25 @@ final class SmeltController implements Listener {
                 UUID farmerId = (UUID) farmer.getClass().getMethod("getId").invoke(farmer);
                 if (farmerId == null) continue;
                 if (operations.containsKey(farmerId)) continue;
-                Selection selection = chooseRecipe(farmerId, farmer);
-                if (selection != null) startAutomatic(farmerId, selection);
+                UUID ownerId = (UUID) farmer.getClass().getMethod("getOwnerUUID").invoke(farmer);
+                Player owner = ownerId == null ? null : Bukkit.getPlayer(ownerId);
+                if (!hasAutomaticPermission(owner)) continue;
+                Selection selection = chooseRecipe(farmerId, owner);
+                if (selection != null) startAutomatic(farmerId, selection, owner);
             }
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ex) {
             plugin.getLogger().log(Level.WARNING, "Farmer otomatik eritme taraması başarısız", ex);
         }
     }
 
-    private Selection chooseRecipe(UUID farmerId, Object farmer) {
+    private Selection chooseRecipe(UUID farmerId, Player owner) {
         List<SmeltRecipe> recipes = configuration.recipes();
         if (recipes.isEmpty()) return null;
         int start = Math.floorMod(recipeCursors.getOrDefault(farmerId, 0), recipes.size());
         for (int offset = 0; offset < recipes.size(); offset++) {
             int index = (start + offset) % recipes.size();
             SmeltRecipe recipe = recipes.get(index);
-            if (!isAutomaticRecipe(recipe) || !automaticAllowed(farmerId, farmer, recipe.rule())) continue;
+            if (!isAutomaticRecipe(recipe) || !recipePermission(owner, recipe.rule())) continue;
             try {
                 FarmerStorage.StockSnapshot snapshot = snapshot(farmerId, recipe);
                 int amount = recipe.amountFor(snapshot.sourceAmount());
@@ -291,32 +298,47 @@ final class SmeltController implements Listener {
         return null;
     }
 
-    private boolean automaticAllowed(UUID farmerId, Object farmer, ItemRule rule) {
-        if (rule.permission().isBlank()) return true;
+    boolean instant(Player player) {
+        String permission = configuration.instantSmeltPermission();
+        return !permission.isBlank() && player != null && player.isOnline() && player.hasPermission(permission);
+    }
+
+    boolean automaticAllowed(UUID farmerId, ItemRule rule) {
+        Player owner = ownerPlayer(farmerId);
+        return hasAutomaticPermission(owner) && (rule == null || recipePermission(owner, rule));
+    }
+
+    boolean instantOwner(UUID farmerId) {
+        return instant(ownerPlayer(farmerId));
+    }
+
+    private Player ownerPlayer(UUID farmerId) {
         try {
-            UUID owner = (UUID) farmer.getClass().getMethod("getOwnerUUID").invoke(farmer);
-            Player player = owner == null ? null : Bukkit.getPlayer(owner);
-            return player != null && player.isOnline() && automaticAuthorized(player, farmerId, rule);
+            ensureStorage();
+            UUID owner = storage.owner(farmerId);
+            return owner == null ? null : Bukkit.getPlayer(owner);
         } catch (ReflectiveOperationException | RuntimeException ex) {
-            warnFarmer(farmerId, "Farmer otomatik eritme yetkisi okunamadı", ex);
-            return false;
+            warnFarmer(farmerId, "Farmer eritme sahibi doğrulanamadı", ex);
+            return null;
         }
     }
 
-    private void startAutomatic(UUID farmerId, Selection selection) {
-        operations.put(farmerId, new Operation(null, farmerId, selection.recipe(), selection.amount(), clock.getAsLong(), null));
+    private boolean hasAutomaticPermission(Player owner) {
+        String permission = configuration.autoSmeltPermission();
+        return permission.isBlank() || owner != null && owner.isOnline() && owner.hasPermission(permission);
     }
 
-
-    private boolean automaticAuthorized(Player player, UUID farmerId, ItemRule rule) {
-        if (!rule.permission().isBlank() && !player.hasPermission(rule.permission())) return false;
-        try {
-            return storage.canAccess(farmerId, player);
-        } catch (ReflectiveOperationException | RuntimeException ex) {
-            warnFarmer(farmerId, "Farmer otomatik eritme sahibi doğrulanamadı", ex);
-            return false;
-        }
+    private static boolean recipePermission(Player owner, ItemRule rule) {
+        return rule.permission().isBlank()
+                || owner != null && owner.isOnline() && owner.hasPermission(rule.permission());
     }
+
+    private void startAutomatic(UUID farmerId, Selection selection, Player owner) {
+        Operation operation = new Operation(null, farmerId, selection.recipe(), selection.amount(), clock.getAsLong(), null);
+        if (instant(owner)) completeAutomatic(operation);
+        else operations.put(farmerId, operation);
+    }
+
 
     private void completeManual(Operation operation, Player player) {
         if (!authorized(player, operation.farmerId(), operation.recipe().rule())) return;
@@ -357,16 +379,7 @@ final class SmeltController implements Listener {
     }
 
     private boolean automaticPermissionStillValid(Operation operation) {
-        ItemRule rule = operation.recipe().rule();
-        if (rule.permission().isBlank()) return true;
-        try {
-            UUID owner = storage.owner(operation.farmerId());
-            Player player = owner == null ? null : Bukkit.getPlayer(owner);
-            return player != null && player.isOnline() && automaticAuthorized(player, operation.farmerId(), rule);
-        } catch (ReflectiveOperationException | RuntimeException ex) {
-            warnFarmer(operation.farmerId(), "Farmer otomatik eritme sahibi doğrulanamadı", ex);
-            return false;
-        }
+        return automaticAllowed(operation.farmerId(), operation.recipe().rule());
     }
 
 

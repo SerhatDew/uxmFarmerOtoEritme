@@ -5,7 +5,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import java.util.List;
 
 final class ConfigurationMigration {
-    private static final int CURRENT_VERSION = 3;
+    private static final int CURRENT_VERSION = 4;
     private static final String DEFAULT_BUTTON_NAME = "&6ᴏᴛᴏ ᴇʀɪᴛᴍᴇ";
     private static final List<String> DEFAULT_BUTTON_LORE = List.of(
             "", "&7ᴜʀᴜɴ ᴍᴇɴᴜsᴜɴᴜ ᴀᴄᴍᴀᴋ ɪᴄɪɴ ᴛɪᴋʟᴀ", "", "&eᴇʀɪᴛᴍᴇ ᴍᴇɴᴜsᴜ ɪᴄɪɴ ᴛɪᴋʟᴀ");
@@ -18,31 +18,30 @@ final class ConfigurationMigration {
         int version = config.getInt("config-version", 0);
         if (version >= CURRENT_VERSION) return false;
 
-        if (version < 1 && !config.contains("items.RAW_IRON")) {
-            addPluginRecipe(config, "RAW_IRON", "IRON_INGOT");
+        if (version < 3) {
+            if (version < 1 && !config.contains("items.RAW_IRON")) {
+                addPluginRecipe(config, "RAW_IRON", "IRON_INGOT");
+            }
+            migrateDefaultRecipe(config, "RAW_IRON", "IRON_INGOT", "give %player% iron_ingot %amount%");
+            migrateDefaultRecipe(config, "IRON_ORE", "IRON_INGOT", "give %player% iron_ingot %amount%");
+            migrateDefaultRecipe(config, "GOLD_ORE", "GOLD_INGOT", "give %player% gold_ingot %amount%");
+            // Add only variants introduced in v3; later upgrades must not restore removed recipes.
+            addIfAbsent(config, "DEEPSLATE_IRON_ORE", "IRON_INGOT");
+            addIfAbsent(config, "RAW_GOLD", "GOLD_INGOT");
+            addIfAbsent(config, "DEEPSLATE_GOLD_ORE", "GOLD_INGOT");
+            addIfAbsent(config, "NETHER_GOLD_ORE", "GOLD_INGOT");
+            addIfAbsent(config, "RAW_COPPER", "COPPER_INGOT");
+            addIfAbsent(config, "COPPER_ORE", "COPPER_INGOT");
+            addIfAbsent(config, "DEEPSLATE_COPPER_ORE", "COPPER_INGOT");
+            migrateGuiText(config);
+            if (!config.contains("automatic-smelting.enabled")) config.set("automatic-smelting.enabled", true);
+            if (!config.contains("automatic-smelting.interval-ticks")) config.set("automatic-smelting.interval-ticks", 20);
         }
-        // Version 2 changed only the bundled command recipes. Never touch custom values.
-        migrateDefaultRecipe(config, "RAW_IRON", "IRON_INGOT", "give %player% iron_ingot %amount%");
-        migrateDefaultRecipe(config, "IRON_ORE", "IRON_INGOT", "give %player% iron_ingot %amount%");
-        migrateDefaultRecipe(config, "GOLD_ORE", "GOLD_INGOT", "give %player% gold_ingot %amount%");
-
-        // These recipes were not part of the original three and can safely be introduced
-        // when absent. Existing custom recipes and deliberately removed original recipes remain untouched.
-        addIfAbsent(config, "DEEPSLATE_IRON_ORE", "IRON_INGOT");
-        addIfAbsent(config, "RAW_GOLD", "GOLD_INGOT");
-        addIfAbsent(config, "DEEPSLATE_GOLD_ORE", "GOLD_INGOT");
-        addIfAbsent(config, "NETHER_GOLD_ORE", "GOLD_INGOT");
-        addIfAbsent(config, "RAW_COPPER", "COPPER_INGOT");
-        addIfAbsent(config, "COPPER_ORE", "COPPER_INGOT");
-        addIfAbsent(config, "DEEPSLATE_COPPER_ORE", "COPPER_INGOT");
-
-        migrateGuiText(config);
-
-        if (!config.contains("automatic-smelting.enabled")) {
-            config.set("automatic-smelting.enabled", true);
+        if (!config.contains("automatic-smelting.permission")) {
+            config.set("automatic-smelting.permission", RuleConfiguration.AUTO_PERMISSION);
         }
-        if (!config.contains("automatic-smelting.interval-ticks")) {
-            config.set("automatic-smelting.interval-ticks", 20);
+        if (!config.contains("instant-smelting.permission")) {
+            config.set("instant-smelting.permission", RuleConfiguration.INSTANT_PERMISSION);
         }
         config.set("config-version", CURRENT_VERSION);
         return true;

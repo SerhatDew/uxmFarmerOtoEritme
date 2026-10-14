@@ -20,3 +20,9 @@ permissions:
   uxmfarmerotosmelter.admin:
     description: Oto eritme yapılandırmasını yenileme yetkisi.
     default: op
+  uxmfarmerotosmelter.auto:
+    description: Sahibinin Farmer deposunda otomatik eritme çalıştırma yetkisi.
+    default: false
+  uxmfarmerotosmelter.instant:
+    description: Manuel ve otomatik eritmede işlem süresini atlama yetkisi.
+    default: false

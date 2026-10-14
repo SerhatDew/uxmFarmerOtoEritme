@@ -261,7 +261,7 @@ final class SmeltGuiHook implements Listener {
                 SmeltRecipe recipe = configuration.recipes().get(start + index++);
                 int slot = row * OUTER_COLUMNS + column;
                 menu.recipes.put(slot, recipe);
-                menu.inventory.setItem(slot, recipeIcon(farmerId, recipe));
+                menu.inventory.setItem(slot, recipeIcon(player, farmerId, recipe));
             }
         }
         int bottom = configuration.guiSettings().rows() * OUTER_COLUMNS - OUTER_COLUMNS;
@@ -298,7 +298,7 @@ final class SmeltGuiHook implements Listener {
         }
     }
 
-    private ItemStack recipeIcon(UUID farmerId, SmeltRecipe recipe) {
+    private ItemStack recipeIcon(Player player, UUID farmerId, SmeltRecipe recipe) {
         int stock = 0;
         boolean sourceReadable = true;
         try {
@@ -350,8 +350,8 @@ final class SmeltGuiHook implements Listener {
         lore.add("");
         lore.add("<#5b9397>Üretim ↓");
         lore.add("<gray>Parti miktarı: <#ffea00>" + amount);
-        lore.add("<gray>Süre: <#ffea00>" + recipe.durationSeconds() + " s");
-        lore.add("<gray>Otomatik: " + automaticStatus(recipe));
+        lore.add("<gray>Süre (manuel): <#ffea00>" + (controller.instant(player) ? "Beklemesiz" : recipe.durationSeconds() + " s"));
+        lore.add("<gray>Otomatik: " + automaticStatus(farmerId, recipe));
         if (active) lore.add("<gray>İşlem: <#ffea00>" + (int) (operation.progress() * 100) + "%");
         lore.add("");
         lore.add(active ? "<yellow>İşlem devam ediyor"
@@ -362,12 +362,17 @@ final class SmeltGuiHook implements Listener {
     }
 
     private ItemStack automaticInfo(UUID farmerId) {
-        boolean enabled = configuration.autoSmeltEnabled() && controller.automaticAvailable();
+        boolean allowed = controller.automaticAllowed(farmerId, null);
+        boolean enabled = configuration.autoSmeltEnabled() && controller.automaticAvailable() && allowed;
         List<String> lore = new ArrayList<>();
         lore.add("");
         lore.add("<gray>Durum: " + (!configuration.autoSmeltEnabled() ? "<red>Kapalı"
-                : controller.automaticAvailable() ? "<#05e300>Açık" : "<red>Kullanılamıyor"));
+                : !controller.automaticAvailable() ? "<red>Kullanılamıyor"
+                : allowed ? "<#05e300>Açık" : "<red>Sahibi yetkisiz veya çevrimdışı"));
         lore.add("<gray>Kaynak ve çıktı aynı Farmer deposundadır.");
+        lore.add("<gray>Gerekli izin: <#ffea00>" + (configuration.autoSmeltPermission().isBlank()
+                ? "Herkese açık" : configuration.autoSmeltPermission()));
+        lore.add("<gray>Otomatik süre: <#ffea00>" + (controller.instantOwner(farmerId) ? "Beklemesiz" : "Tarife göre"));
         SmeltController.Operation operation = controller.operation(farmerId);
         if (operation != null) {
             lore.add("");
@@ -380,13 +385,14 @@ final class SmeltGuiHook implements Listener {
                 "<#ffea00>Otomatik Eritme", lore);
     }
 
-    private String automaticStatus(SmeltRecipe recipe) {
+    private String automaticStatus(UUID farmerId, SmeltRecipe recipe) {
         if (!configuration.autoSmeltEnabled()) return "<red>kapalı";
         if (!controller.automaticAvailable()) return "<red>kullanılamıyor";
         if (!SmeltController.isAutomaticRecipe(recipe)) {
             return "<gray>uygulanmaz";
         }
-        return "<#05e300>açık";
+        if (!controller.automaticAllowed(farmerId, recipe.rule())) return "<red>yetkisiz / çevrimdışı";
+        return controller.instantOwner(farmerId) ? "<#05e300>açık · beklemesiz" : "<#05e300>açık";
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

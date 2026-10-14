@@ -1,10 +1,14 @@
-config-version: 3
+config-version: 4
 enabled: true
 trigger: click # click = sadece Farmer GUI düğmesi; automatic = eski toplama olayı hook'u
 
 automatic-smelting:
   enabled: true
   interval-ticks: 20
+  permission: uxmfarmerotosmelter.auto # Farmer sahibi çevrimiçi ve yetkili olmalı; '' = herkese açık
+
+instant-smelting:
+  permission: uxmfarmerotosmelter.instant # '' = beklemesiz eritme kapalı; auto yetkisi ayrıca gerekir
 
 # UXMFarmer sınıflarına derleme zamanında bağlanılmaz.
 # Modern otomatik eritme, FarmerRepository.getEntries() ile Farmer deposunu tarar.

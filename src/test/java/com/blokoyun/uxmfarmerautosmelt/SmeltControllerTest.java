@@ -52,6 +52,7 @@ class SmeltControllerTest {
         when(player.getUniqueId()).thenReturn(owner);
         when(player.isOnline()).thenReturn(true);
         when(player.hasPermission(anyString())).thenReturn(true);
+        when(player.hasPermission(RuleConfiguration.INSTANT_PERMISSION)).thenReturn(false);
         when(player.getName()).thenReturn("owner");
 
         YamlConfiguration yaml = new YamlConfiguration();
@@ -117,6 +118,7 @@ class SmeltControllerTest {
         yaml.set("enabled", true);
         yaml.set("automatic-smelting.enabled", true);
         yaml.set("automatic-smelting.interval-ticks", 5);
+        yaml.set("automatic-smelting.permission", "");
         yaml.set("gui.enabled", false);
         yaml.set("items.RAW_IRON.mode", "plugin");
         yaml.set("items.RAW_IRON.output-material", "IRON_INGOT");
@@ -189,6 +191,7 @@ class SmeltControllerTest {
         when(player.getUniqueId()).thenReturn(owner);
         when(player.isOnline()).thenReturn(true);
         when(player.hasPermission("smelt.raw")).thenReturn(true, false);
+        when(player.hasPermission(RuleConfiguration.AUTO_PERMISSION)).thenReturn(true);
         AtomicLong now = new AtomicLong();
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("enabled", true);

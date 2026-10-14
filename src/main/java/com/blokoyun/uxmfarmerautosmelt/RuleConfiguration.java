@@ -10,10 +10,14 @@ import java.util.List;
 import java.util.Map;
 
 final class RuleConfiguration {
+    static final String AUTO_PERMISSION = "uxmfarmerotosmelter.auto";
+    static final String INSTANT_PERMISSION = "uxmfarmerotosmelter.instant";
     private final boolean enabled;
     private final boolean automatic;
     private final boolean autoSmeltEnabled;
     private final long autoSmeltIntervalTicks;
+    private final String autoSmeltPermission;
+    private final String instantSmeltPermission;
     private final String pluginName;
     private final String eventClassName;
     private final String priorityName;
@@ -28,6 +32,8 @@ final class RuleConfiguration {
         automatic = "automatic".equalsIgnoreCase(config.getString("trigger", "click"));
         autoSmeltEnabled = config.getBoolean("automatic-smelting.enabled", true);
         autoSmeltIntervalTicks = positiveTicks(config.getLong("automatic-smelting.interval-ticks", 20L));
+        autoSmeltPermission = config.getString("automatic-smelting.permission", AUTO_PERMISSION).trim();
+        instantSmeltPermission = config.getString("instant-smelting.permission", INSTANT_PERMISSION).trim();
         pluginName = config.getString("hook.plugin-name", "uxmFarmer");
         eventClassName = config.getString("hook.event-class",
                 "xyz.geik.farmer.api.handlers.FarmerItemCollectEvent");
@@ -117,6 +123,8 @@ final class RuleConfiguration {
     boolean automatic() { return automatic; }
     boolean autoSmeltEnabled() { return autoSmeltEnabled; }
     long autoSmeltIntervalTicks() { return autoSmeltIntervalTicks; }
+    String autoSmeltPermission() { return autoSmeltPermission; }
+    String instantSmeltPermission() { return instantSmeltPermission; }
     String pluginName() { return pluginName; }
     String eventClassName() { return eventClassName; }
     String priorityName() { return priorityName; }
