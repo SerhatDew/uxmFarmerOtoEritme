@@ -35,20 +35,22 @@ Varsayılan `trigger: click` ayarında toplama olayı otomatik eritme başlatmaz
 
 Başlangıçta ve tamamlanmadan hemen önce farmer sahibi/üye ilişkisi ve izinler yeniden kontrol edilir. `uxmfarmerotosmelter.use` ile `gui.permission` zorunludur; yönetim işlemleri `uxmfarmerotosmelter.admin` ister. Her item kuralı ayrıca `permission` belirleyebilir.
 
-Varsayılan tarif ham demirden (`RAW_IRON`) demir külçesi üretir. Örneğin depoda 3 ham demir varsa, 10 saniye sonunda farmer deposundan 3 ham demir düşülür ve oyuncuya 3 `IRON_INGOT` verilir. Bekleme sırasında kaynak tüketilmez. `RAW_IRON` ve `IRON_ORE` stokları birbirine karıştırılmaz. Komut modunda bir komut başarısız olursa önceki komutların etkisi geri alınamaz; kaynak iade edilmez ve yönetici loguna yazılır.
+Varsayılan tarif ham demirden (`RAW_IRON`) demir külçesi üretir. Örneğin depoda 3 ham demir varsa, 10 saniye sonunda aynı Farmer deposundan 3 ham demir düşülür ve depodaki `IRON_INGOT` miktarı 3 artırılır. **Oyuncu envanterine eşya verilmez.** Bekleme sırasında kaynak tüketilmez. `RAW_IRON` ve `IRON_ORE` stokları birbirine karıştırılmaz.
+
+Demir cevheri de `IRON_INGOT`, altın cevheri `GOLD_INGOT` olarak aynı depoya eklenir. Çıktı malzemesi Farmer'ın `collected-materials.yml` dosyasında tanımlı olmalıdır. Hedef ürün kapasitesi yetersizse işlem kaynak tüketmeden durur.
 
 ## Yapılandırma
 
 Ayar dosyası `plugins/uxmFarmerOtoEritme/config.yml` konumunda oluşturulur; paketlenen varsayılanlar [config.yml](src/main/resources/config.yml) dosyasındadır.
 
 - `items` anahtarları Bukkit `Material` adlarıdır (büyük/küçük harf fark etmez).
-- `mode: plugin`, kaynağı düşürüp `output-material` ürününü aynı farmer deposuna ekler. Alan verilmezse tanınan malzemelerin varsayılan eritme eşleşmesi kullanılır; geçersiz tarifler loglanıp atlanır. `mode: commands`, kaynağı düşürüp `commands` listesini konsoldan çalıştırır.
+- Varsayılan `mode: plugin`, kaynağı düşürüp `output-material` ürününü **aynı Farmer deposuna** ekler; oyuncuya ödül komutu çalıştırmaz. Alan verilmezse tanınan malzemelerin varsayılan eritme eşleşmesi kullanılır; geçersiz tarifler loglanıp atlanır. İsteğe bağlı `mode: commands`, kaynağı düşürüp özel `commands` listesini konsoldan çalıştırır.
 - `min-amount`, `max-amount` (`0` sınırsız), `duration-seconds` ve `batch-size` item başına ayarlanabilir. `batch-size: 0`, uygun stoğun tamamıdır.
 - Komut yer tutucuları `%player%`, `%uuid%`, `%owner%`, `%item%`, `%amount%`, `%farmer_uuid%` ve süslü parantezli karşılıklarıdır.
 - `gui.rows` eritme menüsünün boyutudur; farmer ana menüsünün aynı boyutta olması gerekmez. `gui.slot` farmer ana menüsündeki düğme yeridir; dolu aktif bir düğmenin üzerine yazılmaz. Varsayılan slot `7`, UXMFarmer 3.18 ana menüsünde dolgu slotudur.
 - GUI boyutu 1–6 satırla sınırlıdır; slot ve dolu/işgal edilmiş menü güvenliği kontrol edilir.
 
-Eski config açılışta veya reload sırasında `config-version: 1`'e göç ettirilir. Eksik `RAW_IRON` tarifi eklenir, mevcut özel tarifler korunur. `enabled`, `trigger`, `hook.plugin-name`, `hook.event-class` ve event önceliği de ayarlanabilir.
+Eski config açılışta veya reload sırasında `config-version: 2`'ye güncellenir. Önceki varsayılan `RAW_IRON`, `IRON_ORE` ve `GOLD_ORE` envantere verme tarifleri depoya yazan `plugin` tariflerine dönüştürülür; miktar, süre ve izin ayarları korunur. Özel komut tarifleri değiştirilmez. Sürüm 1'de bilerek kaldırılmış bir tarif yeniden eklenmez; daha eski config'te eksik ham demir tarifi eklenir. `enabled`, `trigger`, `hook.plugin-name`, `hook.event-class` ve event önceliği de ayarlanabilir.
 
 `trigger: automatic` yalnız geriye dönük toplama event hook'unu açar; yeni kurulumlarda önerilen ve varsayılan kullanım `click`tir. Farmer sunucu açılışında geç gelirse bağlantı ve GUI otomatik olarak yeniden denenir.
 
@@ -62,11 +64,9 @@ gui:
   batch-size: 64
 items:
   RAW_IRON:
-    mode: commands
+    mode: plugin
+    output-material: IRON_INGOT
     min-amount: 1
-    consume: true
-    commands:
-      - 'give %player% iron_ingot %amount%'
 ```
 
 ## Uyumluluk ve event sözleşmeleri
@@ -94,7 +94,7 @@ Reload veya eklentinin kapanması sırasında açık eritme menüleri kapanır; 
 | Menü bağlantısı aktif ama düğme yok | `gui.slot` farmer ana menüsünde boş veya dolgu slotu olmalıdır; aktif düğmelerin üzerine yazılmaz. |
 | Oyuncu işlem başlatamıyor | Farmer sahibi/üye ilişkisini, `uxmfarmerotosmelter.use`, `gui.permission` ve tarifin ek iznini kontrol edin. |
 | Bir tarif menüde görünmüyor | Material adını, `output-material` veya komut listesini ve logdaki atlanan tarif uyarısını kontrol edin. |
-| Eritme tamamlanmıyor | Kaynak miktarını, plugin modunda hedef depo kapasitesini ve tamamlanma anındaki erişim izinlerini kontrol edin. |
-| Komut başarısız ama kaynak düşmüş | Komutların yan etkileri geri alınamaz; kaynak bilerek iade edilmez. Konsol komutunu ve hata logunu kontrol edin. |
+| Eritme tamamlanmıyor | Kaynak miktarını, çıktı malzemesinin Farmer'da tanımlı olmasını, hedef depo kapasitesini ve tamamlanma anındaki erişim izinlerini kontrol edin. |
+| Özel komut tarifinde komut başarısız ama kaynak düşmüş | Komutların yan etkileri geri alınamaz; kaynak bilerek iade edilmez. Konsol komutunu ve hata logunu kontrol edin. Varsayılan depoya eritme tarifleri komut çalıştırmaz. |
 
 Farmer lisans, veritabanı veya başka bir başlangıç hatası nedeniyle devre dışıysa önce Farmer'ın kendi başlangıç hatasını giderin. Sorun bildirirken sunucu, Java ve Farmer sürümleriyle `/otoeritme status` çıktısını ve ilgili konsol hatasını ekleyin.

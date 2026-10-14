@@ -35,20 +35,22 @@ With the default `trigger: click`, a collection event does not start auto-smelti
 
 The owner/member relationship and permissions are checked both when an operation starts and immediately before completion. `uxmfarmerotosmelter.use` and `gui.permission` are required for the GUI; administration requires `uxmfarmerotosmelter.admin`. An item rule may require an additional `permission`.
 
-The default recipe converts raw iron (`RAW_IRON`) to iron ingots. For example, with 3 raw iron in storage, after 10 seconds 3 raw iron are debited from Farmer storage and 3 `IRON_INGOT` are given to the player. Resources are not consumed during the countdown. `RAW_IRON` and `IRON_ORE` stock are separate. In command mode, if a command fails, effects of earlier commands cannot be rolled back; the source is not refunded and the failure is logged for administrators.
+The default recipe converts raw iron (`RAW_IRON`) to iron ingots. For example, with 3 raw iron in storage, after 10 seconds 3 raw iron are debited from the same Farmer and its `IRON_INGOT` stock increases by 3. **No items are given to the player's inventory.** Resources are not consumed during the countdown. `RAW_IRON` and `IRON_ORE` stock are separate.
+
+Iron ore also becomes `IRON_INGOT`, and gold ore becomes `GOLD_INGOT`, in the same storage. The output material must be defined in Farmer's `collected-materials.yml`. If destination capacity is insufficient, the operation stops without consuming the source.
 
 ## Configuration
 
 The config is created at `plugins/uxmFarmerOtoEritme/config.yml`; packaged defaults are in [config.yml](src/main/resources/config.yml).
 
 - Keys under `items` are Bukkit `Material` names (case-insensitive).
-- `mode: plugin` debits the source and stores `output-material` in the same farmer. If omitted, recognized materials use their default smelting mapping; invalid recipes are logged and skipped. `mode: commands` debits the source and executes `commands` from the console.
+- The default `mode: plugin` debits the source and stores `output-material` in **the same Farmer**, without executing player reward commands. If omitted, recognized materials use their default smelting mapping; invalid recipes are logged and skipped. The optional `mode: commands` debits the source and executes a custom `commands` list from the console.
 - `min-amount`, `max-amount` (`0` means unlimited), `duration-seconds`, and `batch-size` can be set per item. `batch-size: 0` means the entire suitable stock.
 - Command placeholders are `%player%`, `%uuid%`, `%owner%`, `%item%`, `%amount%`, `%farmer_uuid%`, and their brace-wrapped equivalents.
 - `gui.rows` controls the smelting menu size; the farmer main menu does not need to have the same size. `gui.slot` is the button position in the farmer main menu; an occupied active button is never overwritten. The default slot is `7`, a filler slot in UXMFarmer 3.18's main menu.
 - GUI size is constrained to 1–6 rows, with slot and occupied-inventory safety checks.
 
-On startup or reload, an old config is migrated to `config-version: 1`. A missing `RAW_IRON` recipe is added while existing custom recipes are preserved. `enabled`, `trigger`, `hook.plugin-name`, `hook.event-class`, and event priority are configurable.
+On startup or reload, an old config is upgraded to `config-version: 2`. The previous bundled `RAW_IRON`, `IRON_ORE`, and `GOLD_ORE` inventory reward recipes are converted to storage-based `plugin` recipes while retaining amounts, durations, and permissions. Custom command recipes are left unchanged. A recipe intentionally removed in version 1 is not re-added; older configurations receive a missing raw iron recipe. `enabled`, `trigger`, `hook.plugin-name`, `hook.event-class`, and event priority are configurable.
 
 `trigger: automatic` only enables the legacy collection-event hook; `click` is the recommended and default mode for new installations. If Farmer loads late during server startup, the hook and GUI connection are retried automatically.
 
@@ -62,11 +64,9 @@ gui:
   batch-size: 64
 items:
   RAW_IRON:
-    mode: commands
+    mode: plugin
+    output-material: IRON_INGOT
     min-amount: 1
-    consume: true
-    commands:
-      - 'give %player% iron_ingot %amount%'
 ```
 
 ## Compatibility and event contracts
@@ -94,7 +94,7 @@ Reload or plugin shutdown closes open smelting menus; active operations are canc
 | GUI connection is active, but no button appears | `gui.slot` must be empty or a filler slot in the farmer main menu; active buttons are not overwritten. |
 | A player cannot start smelting | Check farmer ownership/membership, `uxmfarmerotosmelter.use`, `gui.permission`, and the recipe's additional permission. |
 | A recipe is missing from the menu | Check the Material name, `output-material` or command list, and skipped-recipe warnings in the log. |
-| Smelting does not complete | Check source stock, destination capacity in plugin mode, and access permissions at completion. |
-| A command fails, but stock was debited | Command side effects cannot be rolled back; the source is deliberately not refunded. Check the console command and failure log. |
+| Smelting does not complete | Check source stock, the output material's Farmer configuration, destination capacity, and access permissions at completion. |
+| A custom recipe's command fails, but stock was debited | Command side effects cannot be rolled back; the source is deliberately not refunded. Check the console command and failure log. Default storage-based recipes do not execute commands. |
 
 If Farmer is disabled by a license, database, or other startup error, fix Farmer's own startup error first. Include the server, Java, and Farmer versions, `/otoeritme status`, and the relevant console error when reporting a problem.
