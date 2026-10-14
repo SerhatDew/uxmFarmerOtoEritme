@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
+import static org.junit.jupiter.api.Assertions.assertThrows;
 class SmeltTransactionTest {
     @Test
     void pluginModeMovesStock() throws Exception {
@@ -53,6 +53,28 @@ class SmeltTransactionTest {
         assertEquals(SmeltTransaction.Result.DESTINATION_FULL,
                 SmeltTransaction.complete(stock, ItemRule.RuleMode.PLUGIN, 2, List.of(), command -> true));
         assertEquals(4, stock.sourceAmount());
+    }
+
+    @Test
+    void failedCreditRestoresSourceEvenIfDestinationRestoreFails() {
+        FarmerStorage.StockSnapshot snapshot = new FarmerStorage.StockSnapshot(
+                new FailingItem(3, false), 3, new FailingItem(0, true), 0, 10);
+
+        assertThrows(ReflectiveOperationException.class, () ->
+                SmeltTransaction.complete(snapshot, ItemRule.RuleMode.PLUGIN, 3, List.of(), command -> true));
+
+        assertEquals(3, snapshot.sourceAmount(), "destination restore failure must not drop source refund");
+    }
+
+    private static final class FailingItem {
+        private int amount;
+        private final boolean fail;
+        private FailingItem(int amount, boolean fail) { this.amount = amount; this.fail = fail; }
+        public void setAmount(int value) {
+            if (fail) throw new IllegalStateException("destination failure");
+            this.amount = value;
+        }
+        public int getAmount() { return amount; }
     }
 
     private static final class FakeStock implements SmeltTransaction.Stock {

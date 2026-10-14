@@ -286,6 +286,8 @@ final class SmeltController implements Listener {
             SmeltRecipe recipe = recipes.get(index);
             if (!isAutomaticRecipe(recipe) || !recipePermission(owner, recipe.rule())) continue;
             try {
+                int stock = stock(farmerId, recipe.rule().material());
+                if (stock <= 0) continue;
                 FarmerStorage.StockSnapshot snapshot = snapshot(farmerId, recipe);
                 int amount = recipe.amountFor(snapshot.sourceAmount());
                 if (amount <= 0 || snapshot.destinationSpace() < amount) continue;

@@ -113,6 +113,9 @@ final class FarmerStorage {
     }
 
     Iterable<?> farmers() throws ReflectiveOperationException {
+        if (!dependency.isEnabled()) {
+            throw new IllegalStateException("uxmFarmer etkin değil");
+        }
         initializeRepository();
         if (!modernAvailable) {
             throw new IllegalStateException("Modern FarmerRepository API kullanılamıyor");
@@ -272,12 +275,14 @@ final class FarmerStorage {
 
         @Override
         public void restore() throws ReflectiveOperationException {
-            if (destination != null) {
-                set(destination, destinationAmount);
+            try {
+                set(source, sourceAmount);
+            } finally {
+                if (destination != null) {
+                    set(destination, destinationAmount);
+                }
             }
-            set(source, sourceAmount);
         }
-
         private static void set(Object item, int value) throws ReflectiveOperationException {
             try {
                 item.getClass().getMethod("setAmount", int.class).invoke(item, value);

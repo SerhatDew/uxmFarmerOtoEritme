@@ -157,6 +157,7 @@ class VipPermissionsTest {
             when(storage.farmers()).thenAnswer(call -> List.of(farmer));
             when(storage.owner(farmerId)).thenReturn(owner);
             when(storage.canAccess(farmerId, player)).thenReturn(true);
+            when(storage.amount(eq(farmerId), eq(Material.RAW_IRON))).thenAnswer(call -> source.getAmount());
             when(storage.snapshot(eq(farmerId), any(SmeltRecipe.class))).thenAnswer(call ->
                     new FarmerStorage.StockSnapshot(source, source.getAmount(), output, output.getAmount(), 64));
             YamlConfiguration yaml = new YamlConfiguration();
