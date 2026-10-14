@@ -1,11 +1,13 @@
 package com.blokoyun.uxmfarmerautosmelt;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.boss.BarColor;
-import org.bukkit.boss.BarStyle;
-import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -16,6 +18,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -23,9 +26,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,37 +36,41 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
+/** Farmer menu bridge and the native-looking smelting inventory. */
 final class SmeltGuiHook implements Listener {
     private static final String[] OPEN_EVENTS = {
             "xyz.geik.farmer.api.handlers.FarmerMainGuiOpenEvent",
             "com.uxplima.uxmfarmer.api.event.impl.FarmerOpenMainMenuEvent"
     };
     private static final String GUI_PACKAGE = "com.uxplima.uxmfarmer.shaded.gui.";
-    private static final int PAGE_SIZE = 45;
+    private static final String FARMER_GUI = "com.uxplima.uxmfarmer.gui.impl.farmer.FarmerGUI";
+    private static final MiniMessage MINI = MiniMessage.miniMessage();
+    private static final int OUTER_COLUMNS = 9;
+    private static final int INNER_COLUMNS = 7;
     static final String USE_PERMISSION = "uxmfarmerotosmelter.use";
 
     private final JavaPlugin plugin;
     private final RuleConfiguration configuration;
+    private final SmeltController controller;
     private final Map<UUID, PendingMenu> pending = new HashMap<>();
     private final Map<UUID, InjectedButton> injected = new HashMap<>();
-    private final Map<UUID, Operation> operations = new HashMap<>();
     private Class<? extends Event> menuEventClass;
-    private FarmerStorage storage;
-    private BukkitTask ticker;
+    private Plugin dependency;
     private boolean registered;
     private boolean warned;
     private boolean dependencyWarned;
     private boolean occupiedSlotWarned;
     private long generation;
 
-    SmeltGuiHook(JavaPlugin plugin, RuleConfiguration configuration) {
+    SmeltGuiHook(JavaPlugin plugin, RuleConfiguration configuration, SmeltController controller) {
         this.plugin = plugin;
         this.configuration = configuration;
+        this.controller = controller;
     }
 
     boolean register() {
         if (registered || !configuration.enabled() || !configuration.guiSettings().enabled()) return true;
-        Plugin dependency = FarmerDependency.find(Bukkit.getPluginManager(), configuration.pluginName());
+        dependency = FarmerDependency.find(Bukkit.getPluginManager(), configuration.pluginName());
         if (dependency == null || !dependency.isEnabled()) {
             if (!dependencyWarned) {
                 plugin.getLogger().warning("Farmer GUI bağlanamadı: Farmer eklentisi bulunamadı veya etkin değil. "
@@ -79,15 +86,15 @@ final class SmeltGuiHook implements Listener {
                 try {
                     event = Class.forName(eventName, true, dependency.getClass().getClassLoader());
                     break;
-                } catch (ClassNotFoundException ignored) { }
+                } catch (ClassNotFoundException ignored) {
+                    // Try the other supported Farmer generation.
+                }
             }
             if (event == null) throw new ClassNotFoundException("Farmer GUI open event bulunamadı");
             menuEventClass = event.asSubclass(Event.class);
-            storage = new FarmerStorage(dependency);
             Bukkit.getPluginManager().registerEvent(menuEventClass, this, EventPriority.MONITOR,
                     (listener, incoming) -> captureFarmer(incoming), plugin, true);
             Bukkit.getPluginManager().registerEvents(this, plugin);
-            ticker = Bukkit.getScheduler().runTaskTimer(plugin, this::tickOperations, 5L, 5L);
             registered = true;
             plugin.getLogger().info("Farmer GUI oto eritme düğmesi aktif: " + dependency.getName()
                     + "; slot: " + configuration.guiSettings().slot() + "; yetki: " + USE_PERMISSION);
@@ -115,9 +122,6 @@ final class SmeltGuiHook implements Listener {
             }
         }
         HandlerList.unregisterAll(this);
-        if (ticker != null) ticker.cancel();
-        operations.values().forEach(operation -> operation.bar.removeAll());
-        operations.clear();
         pending.clear();
         injected.clear();
         registered = false;
@@ -127,19 +131,21 @@ final class SmeltGuiHook implements Listener {
         if (!menuEventClass.isInstance(event) || !Bukkit.isPrimaryThread()
                 || event instanceof Cancellable cancellable && cancellable.isCancelled()) return;
         try {
-            UUID farmer;
+            UUID farmerId;
             try {
-                farmer = (UUID) event.getClass().getMethod("getFarmerUUID").invoke(event);
-            } catch (NoSuchMethodException legacyMissing) {
-                Object farmerObject = event.getClass().getMethod("getFarmer").invoke(event);
-                farmer = UUID.nameUUIDFromBytes(("farmer:" + farmerObject.getClass().getMethod("getRegionID").invoke(farmerObject)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                storage.bind(farmer, farmerObject);
+                farmerId = (UUID) event.getClass().getMethod("getFarmerUUID").invoke(event);
+            } catch (NoSuchMethodException legacy) {
+                Object farmer = event.getClass().getMethod("getFarmer").invoke(event);
+                Object region = farmer.getClass().getMethod("getRegionID").invoke(farmer);
+                farmerId = UUID.nameUUIDFromBytes(("farmer:" + region).getBytes(StandardCharsets.UTF_8));
+                controller.bindFarmer(farmerId, farmer);
             }
             Object value = event.getClass().getMethod("getPlayer").invoke(event);
             if (value instanceof Player player) {
-                PendingMenu request = new PendingMenu(farmer);
+                PendingMenu request = new PendingMenu(farmerId);
                 pending.put(player.getUniqueId(), request);
-                Bukkit.getScheduler().runTaskLater(plugin, () -> pending.remove(player.getUniqueId(), request), 40L);
+                Bukkit.getScheduler().runTaskLater(plugin,
+                        () -> pending.remove(player.getUniqueId(), request), 40L);
             }
         } catch (ReflectiveOperationException | RuntimeException ex) {
             plugin.getLogger().log(Level.WARNING, "Farmer menü bilgisi okunamadı", ex);
@@ -149,15 +155,15 @@ final class SmeltGuiHook implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (!(event.getPlayer() instanceof Player player)) return;
-        Inventory inventory = event.getInventory();
-        PendingMenu request = pending.get(player.getUniqueId());
+        PendingMenu request = pending.remove(player.getUniqueId());
         if (request == null) return;
-        if (inventory.getSize() <= configuration.guiSettings().slot()
-                || inventory.getType() != org.bukkit.event.inventory.InventoryType.CHEST) {
+        Inventory inventory = event.getInventory();
+        int slot = configuration.guiSettings().slot();
+        if (inventory.getType() != org.bukkit.event.inventory.InventoryType.CHEST
+                || inventory.getSize() <= slot || !recognizedFarmerMenu(inventory.getHolder())) {
             plugin.getLogger().fine("Farmer menüsü düğme için uygun değil: boyut=" + inventory.getSize());
             return;
         }
-        pending.remove(player.getUniqueId());
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (registered && player.isOnline() && player.getOpenInventory().getTopInventory() == inventory) {
                 injectButton(player, inventory, inventory.getHolder(), request.farmerId);
@@ -165,22 +171,32 @@ final class SmeltGuiHook implements Listener {
         });
     }
 
-    private void injectButton(Player player, Inventory inventory, InventoryHolder holder, UUID farmerId) {
+    private boolean recognizedFarmerMenu(InventoryHolder holder) {
+        if (holder == null) return false;
         try {
-            int slot = configuration.guiSettings().slot();
+            holder.getClass().getMethod("getGuiItem", int.class);
+            holder.getClass().getMethod("updateItem", int.class, Class.forName(
+                    GUI_PACKAGE + "guis.GuiItem", true, holder.getClass().getClassLoader()));
+            return true;
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            // Older Farmer GUIs do not expose the shaded holder API; their own classloader is
+            // still a reliable identity check, while unrelated chests are rejected.
+            return dependency != null && holder.getClass().getClassLoader() == dependency.getClass().getClassLoader();
+        }
+    }
+
+    private void injectButton(Player player, Inventory inventory, InventoryHolder holder, UUID farmerId) {
+        int slot = configuration.guiSettings().slot();
+        try {
             ClassLoader loader = holder.getClass().getClassLoader();
             Class<?> itemType = Class.forName(GUI_PACKAGE + "guis.GuiItem", true, loader);
             Class<?> actionType = Class.forName(GUI_PACKAGE + "components.GuiAction", true, loader);
             Object existing = holder.getClass().getMethod("getGuiItem", int.class).invoke(holder, slot);
             if (existing != null && itemType.getMethod("getAction").invoke(existing) != null) {
-                if (!occupiedSlotWarned) {
-                    plugin.getLogger().warning("Oto eritme düğmesi eklenemedi: gui.slot=" + slot
-                            + " Farmer menüsündeki başka bir düğme tarafından kullanılıyor. Boş bir slot seçin.");
-                    occupiedSlotWarned = true;
-                }
+                warnOccupied(slot);
                 return;
             }
-            Object action = Proxy.newProxyInstance(loader, new Class<?>[] {actionType}, (proxy, method, args) -> {
+            Object action = Proxy.newProxyInstance(loader, new Class<?>[]{actionType}, (proxy, method, args) -> {
                 if (method.getName().equals("execute") && args != null && args.length == 1
                         && args[0] instanceof InventoryClickEvent click
                         && click.getWhoClicked().getUniqueId().equals(player.getUniqueId())
@@ -190,7 +206,7 @@ final class SmeltGuiHook implements Listener {
                     Bukkit.getScheduler().runTask(plugin, () -> {
                         if (registered && actionGeneration == generation && player.isOnline()
                                 && player.getOpenInventory().getTopInventory() == inventory) {
-                            openMenu(player, farmerId, 0);
+                            openMenu(player, farmerId, 0, inventory, inventory);
                         }
                     });
                 }
@@ -204,201 +220,320 @@ final class SmeltGuiHook implements Listener {
                             configuration.guiSettings().buttonLore()), action);
             holder.getClass().getMethod("updateItem", int.class, itemType).invoke(holder, slot, guiItem);
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ex) {
-            inventory.setItem(configuration.guiSettings().slot(), icon(configuration.guiSettings().buttonMaterial(),
+            // Never overwrite an active Farmer action when a GUI implementation changes.
+            ItemStack current = inventory.getItem(slot);
+            if (!safeToInject(current)) {
+                warnOccupied(slot);
+                return;
+            }
+            inventory.setItem(slot, icon(configuration.guiSettings().buttonMaterial(),
                     configuration.guiSettings().buttonName(), configuration.guiSettings().buttonLore()));
         }
         injected.put(player.getUniqueId(), new InjectedButton(inventory, farmerId));
     }
 
-    private boolean authorized(Player player, UUID farmerId, ItemRule rule) {
-        String extra = configuration.guiSettings().permission();
-        if (!player.hasPermission(USE_PERMISSION) || !extra.isBlank() && !player.hasPermission(extra)
-                || rule != null && !rule.permission().isBlank() && !player.hasPermission(rule.permission())) {
-            PlayerMessages.send(player, "§cᴏᴛᴏ ᴇʀɪᴛᴍᴇ ʏᴇᴛᴋɪɴ ʏᴏᴋ.");
-            return false;
-        }
-        try {
-            if (!storage.canAccess(farmerId, player)) {
-                PlayerMessages.send(player, "§cʏᴀʟɴɪᴢᴄᴀ ᴋᴇɴᴅɪ ᴄɪꜰᴛᴄɪɴᴅᴇ ᴇʀɪᴛᴍᴇ ʏᴀᴘᴀʙɪʟɪʀsɪɴ.");
-                return false;
-            }
-            return true;
-        } catch (ReflectiveOperationException | RuntimeException ex) {
-            PlayerMessages.send(player, "§cᴄɪꜰᴛᴄɪ ᴅᴇᴘᴏsᴜɴᴀ ᴜʟᴀsɪʟᴀᴍᴀᴅɪ.");
-            plugin.getLogger().log(Level.WARNING, "Farmer erişimi doğrulanamadı", ex);
-            return false;
+    private boolean safeToInject(ItemStack current) {
+        return current == null || current.getType().isAir()
+                || current.getType() == configuration.guiSettings().fillerMaterial();
+    }
+
+    private void warnOccupied(int slot) {
+        if (!occupiedSlotWarned) {
+            plugin.getLogger().warning("Oto eritme düğmesi eklenemedi: gui.slot=" + slot
+                    + " Farmer menüsündeki başka bir düğme tarafından kullanılıyor. Boş bir slot seçin.");
+            occupiedSlotWarned = true;
         }
     }
 
-    private void openMenu(Player player, UUID farmerId, int page) {
-        if (!authorized(player, farmerId, null)) return;
-        if (!registered || !configuration.enabled()) return;
-        SmeltMenu menu = new SmeltMenu(this, player.getUniqueId(), farmerId, page);
-        List<SmeltRecipe> recipes = configuration.recipes();
-        int start = page * PAGE_SIZE;
-        for (int slot = 0; slot < PAGE_SIZE && start + slot < recipes.size(); slot++) {
-            SmeltRecipe recipe = recipes.get(start + slot);
-            menu.recipes.put(slot, recipe);
-            int stock = 0;
-            try { stock = storage.amount(farmerId, recipe.rule().material()); }
-            catch (ReflectiveOperationException | RuntimeException ex) { plugin.getLogger().fine(ex.getMessage()); }
-            int amount = recipe.amountFor(stock);
-            menu.inventory.setItem(slot, icon(recipe.rule().material(), "&e" + recipe.rule().material().name(),
-                    List.of("&7sᴛᴏᴋ: &f" + stock, "&7ᴍɪᴋᴛᴀʀ: &f" + amount,
-                            "&7sᴜʀᴇ: &f" + recipe.durationSeconds() + " s", "", "&eᴇʀɪᴛᴍᴇᴋ ɪᴄɪɴ ᴛɪᴋʟᴀ")));
+    private void openMenu(Player player, UUID farmerId, int page, Inventory originalMenu, Inventory expectedView) {
+        if (!registered || !configuration.enabled() || !controller.authorized(player, farmerId, null)) return;
+        int pageSize = pageSize();
+        int pageCount = Math.max(1, (configuration.recipes().size() + pageSize - 1) / pageSize);
+        int safePage = Math.max(0, Math.min(page, pageCount - 1));
+        SmeltMenu menu = new SmeltMenu(this, player.getUniqueId(), farmerId, safePage,
+                generation, originalMenu, configuration.guiSettings().rows());
+        fillFrame(menu.inventory);
+        menu.inventory.setItem(4, automaticInfo(farmerId));
+        int start = safePage * pageSize;
+        int index = 0;
+        for (int row = 1; row < configuration.guiSettings().rows() - 1; row++) {
+            for (int column = 1; column <= INNER_COLUMNS && start + index < configuration.recipes().size(); column++) {
+                SmeltRecipe recipe = configuration.recipes().get(start + index++);
+                int slot = row * OUTER_COLUMNS + column;
+                menu.recipes.put(slot, recipe);
+                menu.inventory.setItem(slot, recipeIcon(farmerId, recipe));
+            }
         }
-        if (page > 0) menu.inventory.setItem(45, icon(Material.ARROW, "&eᴏɴᴄᴇᴋɪ sᴀʏꜰᴀ", List.of()));
-        if (start + PAGE_SIZE < recipes.size()) menu.inventory.setItem(53, icon(Material.ARROW, "&esᴏɴʀᴀᴋɪ sᴀʏꜰᴀ", List.of()));
-        menu.inventory.setItem(48, icon(Material.BARRIER, "&cᴋᴀᴘᴀᴛ", List.of()));
-        menu.inventory.setItem(50, icon(Material.CHEST, "&eʏᴇɴɪʟᴇ", List.of()));
+        int bottom = configuration.guiSettings().rows() * OUTER_COLUMNS - OUTER_COLUMNS;
+        if (safePage > 0) menu.inventory.setItem(bottom + 1,
+                icon(Material.ARROW, "<#ffea00>← Önceki Sayfa", List.of()));
+        menu.inventory.setItem(bottom + 3, icon(Material.BARRIER, "<#ff0000>Geri Dön", List.of()));
+        menu.inventory.setItem(bottom + 5, icon(Material.CHEST, "<#ffea00>Yenile", List.of()));
+        menu.inventory.setItem(bottom + 4, icon(Material.PAPER,
+                "<#ffea00>Sayfa " + (safePage + 1) + " / " + pageCount, List.of()));
+        if (safePage + 1 < pageCount) menu.inventory.setItem(bottom + 7,
+                icon(Material.ARROW, "<#ffea00>Sonraki Sayfa →", List.of()));
         Bukkit.getScheduler().runTask(plugin, () -> {
-            if (registered && player.isOnline()) player.openInventory(menu.inventory);
+            if (registered && generation == menu.generation && player.isOnline()
+                    && player.getOpenInventory().getTopInventory() == expectedView) {
+                player.openInventory(menu.inventory);
+            }
         });
+    }
+
+
+    private int pageSize() {
+        return INNER_COLUMNS * Math.max(1, configuration.guiSettings().rows() - 2);
+    }
+
+    private void fillFrame(Inventory inventory) {
+        ItemStack filler = icon(configuration.guiSettings().fillerMaterial(), "<gray> ", List.of());
+        int rows = inventory.getSize() / OUTER_COLUMNS;
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < OUTER_COLUMNS; column++) {
+                if (row == 0 || row == rows - 1 || column == 0 || column == OUTER_COLUMNS - 1) {
+                    inventory.setItem(row * OUTER_COLUMNS + column, filler);
+                }
+            }
+        }
+    }
+
+    private ItemStack recipeIcon(UUID farmerId, SmeltRecipe recipe) {
+        int stock = 0;
+        boolean sourceReadable = true;
+        try {
+            stock = controller.stock(farmerId, recipe.rule().material());
+        } catch (ReflectiveOperationException | RuntimeException ex) {
+            sourceReadable = false;
+            plugin.getLogger().fine("Kaynak stoku okunamadı: " + ex.getMessage());
+        }
+        int amount = recipe.amountFor(stock);
+        String output = recipe.output() == null ? "Tanımsız" : recipe.output().name();
+        String currentOutput = "belirsiz";
+        String capacity = "belirsiz";
+        boolean canStart = sourceReadable && amount > 0;
+        if (recipe.rule().mode() == ItemRule.RuleMode.COMMANDS) {
+            currentOutput = "komut çıktısı";
+            capacity = "uygulanmaz";
+        } else if (recipe.output() == null) {
+            currentOutput = "tanımsız ürün";
+            capacity = "tanımsız ürün";
+            canStart = false;
+        } else {
+            try {
+                currentOutput = Integer.toString(controller.stock(farmerId, recipe.output()));
+            } catch (ReflectiveOperationException | RuntimeException ex) {
+                currentOutput = "kayıt yok";
+            }
+            // Snapshot is intentionally deferred until there is source to process. This avoids creating
+            // a missing output record merely by opening the product menu.
+            if (stock > 0) {
+                try {
+                    FarmerStorage.StockSnapshot snapshot = controller.snapshot(farmerId, recipe);
+                    currentOutput = Integer.toString(snapshot.destinationAmount());
+                    capacity = Integer.toString(snapshot.capacity());
+                    canStart = amount > 0 && snapshot.destinationSpace() >= amount;
+                } catch (ReflectiveOperationException | RuntimeException ex) {
+                    canStart = false;
+                    capacity = "tanımsız ürün";
+                }
+            }
+        }
+        SmeltController.Operation operation = controller.operation(farmerId);
+        boolean active = operation != null && operation.recipe().equals(recipe);
+        boolean farmerBusy = operation != null;
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add("<gray>Mevcut stok: <#05e300>" + (sourceReadable ? Integer.toString(stock) : "okunamadı"));
+        lore.add("<gray>Çıktı: <#5b9397>" + output);
+        lore.add("<gray>Çıktı stoku: <#05e300>" + currentOutput + " <gray>/ <#e3000e>" + capacity);
+        lore.add("");
+        lore.add("<#5b9397>Üretim ↓");
+        lore.add("<gray>Parti miktarı: <#ffea00>" + amount);
+        lore.add("<gray>Süre: <#ffea00>" + recipe.durationSeconds() + " s");
+        lore.add("<gray>Otomatik: " + automaticStatus(recipe));
+        if (active) lore.add("<gray>İşlem: <#ffea00>" + (int) (operation.progress() * 100) + "%");
+        lore.add("");
+        lore.add(active ? "<yellow>İşlem devam ediyor"
+                : farmerBusy ? "<yellow>Bu Farmer'da başka bir işlem var"
+                : canStart ? "<yellow>Başlatmak için tıkla" : "<red>Stok veya kapasite uygun değil");
+        Material material = recipe.rule().material() == null ? Material.BARRIER : recipe.rule().material();
+        return icon(material, Component.translatable(material.translationKey()).color(NamedTextColor.GRAY), lore);
+    }
+
+    private ItemStack automaticInfo(UUID farmerId) {
+        boolean enabled = configuration.autoSmeltEnabled() && controller.automaticAvailable();
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add("<gray>Durum: " + (!configuration.autoSmeltEnabled() ? "<red>Kapalı"
+                : controller.automaticAvailable() ? "<#05e300>Açık" : "<red>Kullanılamıyor"));
+        lore.add("<gray>Kaynak ve çıktı aynı Farmer deposundadır.");
+        SmeltController.Operation operation = controller.operation(farmerId);
+        if (operation != null) {
+            lore.add("");
+            lore.add("<#5b9397>Devam Eden İşlem ↓");
+            lore.add("<gray>Ürün: <#ffea00>" + operation.recipe().rule().material().name());
+            lore.add("<gray>Miktar: <#ffea00>" + operation.amount());
+            lore.add("<gray>İlerleme: <#ffea00>" + (int) (operation.progress() * 100) + "%");
+        }
+        return icon(enabled ? Material.LIME_DYE : Material.GRAY_DYE,
+                "<#ffea00>Otomatik Eritme", lore);
+    }
+
+    private String automaticStatus(SmeltRecipe recipe) {
+        if (!configuration.autoSmeltEnabled()) return "<red>kapalı";
+        if (!controller.automaticAvailable()) return "<red>kullanılamıyor";
+        if (!SmeltController.isAutomaticRecipe(recipe)) {
+            return "<gray>uygulanmaz";
+        }
+        return "<#05e300>açık";
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getWhoClicked() instanceof Player player && event.getRawSlot() == configuration.guiSettings().slot()) {
-            InjectedButton button = injected.get(player.getUniqueId());
-            if (button != null && event.getView().getTopInventory() == button.inventory) {
-                event.setCancelled(true);
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (registered && player.isOnline() && player.getOpenInventory().getTopInventory() == button.inventory) {
-                        openMenu(player, button.farmerId, 0);
-                    }
-                });
-                return;
-            }
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        InjectedButton button = injected.get(player.getUniqueId());
+        if (button != null && event.getView().getTopInventory() == button.inventory
+                && event.getRawSlot() == configuration.guiSettings().slot()) {
+            event.setCancelled(true);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (registered && player.isOnline() && player.getOpenInventory().getTopInventory() == button.inventory) {
+                    openMenu(player, button.farmerId, 0, button.inventory, button.inventory);
+                }
+            });
+            return;
         }
         if (!(event.getView().getTopInventory().getHolder() instanceof SmeltMenu menu) || menu.owner != this
-                || !registered) return;
+                || !registered || !menu.playerId.equals(player.getUniqueId()) || menu.generation != generation) return;
+        // Cancel bottom-inventory shift/number-key clicks as well as top clicks.
         event.setCancelled(true);
-        if (!(event.getWhoClicked() instanceof Player player) || !menu.playerId.equals(player.getUniqueId())
-                || event.getRawSlot() < 0 || event.getRawSlot() >= menu.inventory.getSize()) return;
+        if (event.getRawSlot() < 0 || event.getRawSlot() >= menu.inventory.getSize()) return;
         SmeltRecipe recipe = menu.recipes.get(event.getRawSlot());
-        if (recipe != null) { start(player, menu.farmerId, recipe); return; }
+        if (recipe != null) {
+            controller.start(player, menu.farmerId, recipe);
+            return;
+        }
+        int bottom = menu.inventory.getSize() - OUTER_COLUMNS;
+        int rawSlot = event.getRawSlot();
         Bukkit.getScheduler().runTask(plugin, () -> {
-            if (!registered || !player.isOnline() || player.getOpenInventory().getTopInventory() != menu.inventory) return;
-            if (event.getRawSlot() == 50) { player.closeInventory(); openMenu(player, menu.farmerId, menu.page); }
-            else if (event.getRawSlot() == 48) player.closeInventory();
-            else if (event.getRawSlot() == 45 && menu.page > 0) { player.closeInventory(); openMenu(player, menu.farmerId, menu.page - 1); }
-            else if (event.getRawSlot() == 53 && (menu.page + 1) * PAGE_SIZE < configuration.recipes().size()) { player.closeInventory(); openMenu(player, menu.farmerId, menu.page + 1); }
+            if (!isCurrent(player, menu)) return;
+            if (rawSlot == bottom + 5) {
+                openMenu(player, menu.farmerId, menu.page, menu.originalMenu, menu.inventory);
+            } else if (rawSlot == bottom + 3) {
+                player.closeInventory();
+                openFarmerMenu(player, menu.farmerId, menu.originalMenu);
+            } else if (rawSlot == bottom + 1 && menu.page > 0) {
+                openMenu(player, menu.farmerId, menu.page - 1, menu.originalMenu, menu.inventory);
+            } else if (rawSlot == bottom + 7
+                    && (menu.page + 1) * pageSize() < configuration.recipes().size()) {
+                openMenu(player, menu.farmerId, menu.page + 1, menu.originalMenu, menu.inventory);
+            }
         });
     }
-
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryDrag(InventoryDragEvent event) {
-        if (event.getView().getTopInventory().getHolder() instanceof SmeltMenu menu && menu.owner == this && registered) event.setCancelled(true);
+        if (event.getView().getTopInventory().getHolder() instanceof SmeltMenu menu && menu.owner == this
+                && registered && menu.generation == generation) event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        InjectedButton button = injected.get(playerId);
+        if (button != null && button.inventory == event.getInventory()) {
+            injected.remove(playerId);
+        }
+        if (event.getInventory().getHolder() instanceof SmeltMenu menu && menu.owner == this) {
+            injected.remove(playerId);
+        }
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        pending.remove(event.getPlayer().getUniqueId());
-        injected.remove(event.getPlayer().getUniqueId());
-        operations.values().stream().filter(operation -> operation.playerId.equals(event.getPlayer().getUniqueId()))
-                .findFirst().ifPresent(operation -> cancel(operation, null));
+        UUID playerId = event.getPlayer().getUniqueId();
+        pending.remove(playerId);
+        injected.remove(playerId);
+        controller.cancelPlayer(playerId);
     }
 
-    private void start(Player player, UUID farmerId, SmeltRecipe recipe) {
-        if (!authorized(player, farmerId, recipe.rule())) return;
-        if (operations.containsKey(farmerId) || operations.values().stream().anyMatch(o -> o.playerId.equals(player.getUniqueId()))) {
-            PlayerMessages.send(player, "§eʙɪʀ ᴇʀɪᴛᴍᴇ ɪsʟᴇᴍɪ ᴢᴀᴛᴇɴ ᴅᴇᴠᴀᴍ ᴇᴅɪʏᴏʀ.");
+    private boolean isCurrent(Player player, SmeltMenu menu) {
+        return registered && generation == menu.generation && player.isOnline()
+                && menu.playerId.equals(player.getUniqueId())
+                && player.getOpenInventory().getTopInventory() == menu.inventory;
+    }
+
+    private void openFarmerMenu(Player player, UUID farmerId, Inventory originalMenu) {
+        if (!registered || !player.isOnline() || !controller.authorized(player, farmerId, null)) return;
+        try {
+            Class<?> farmerGui = Class.forName(FARMER_GUI, true, dependency.getClass().getClassLoader());
+            Object gui = farmerGui.getConstructor(UUID.class).newInstance(farmerId);
+            farmerGui.getMethod("open", Player.class).invoke(gui, player);
             return;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ex) {
+            plugin.getLogger().log(Level.WARNING, "Farmer ana menüsüne geri dönülemedi; eski menü deneniyor", ex);
         }
-        try {
-            FarmerStorage.StockSnapshot snapshot = storage.snapshot(farmerId, recipe);
-            int amount = recipe.amountFor(snapshot.sourceAmount());
-            if (amount == 0 || recipe.rule().mode() == ItemRule.RuleMode.PLUGIN && snapshot.destinationSpace() < amount) {
-                PlayerMessages.send(player, "§cᴅᴇᴘᴏ ᴠᴇʏᴀ ᴍɪᴋᴛᴀʀ sᴀʀᴛɪ ᴜʏɢᴜɴ ᴅᴇɢɪʟ.");
+        if (originalMenu != null) {
+            try {
+                player.openInventory(originalMenu);
                 return;
-            }
-            BossBar bar = Bukkit.createBossBar("ᴇʀɪᴛɪʟɪʏᴏʀ", BarColor.YELLOW, BarStyle.SOLID);
-            bar.setProgress(0.0);
-            bar.addPlayer(player);
-            operations.put(farmerId, new Operation(player.getUniqueId(), farmerId, recipe, amount, System.nanoTime(), bar));
-            PlayerMessages.send(player, "§eᴇʀɪᴛᴍᴇ ʙᴀsʟᴀᴅɪ: §f" + recipe.durationSeconds() + " s");
-        } catch (ReflectiveOperationException | RuntimeException ex) {
-            PlayerMessages.send(player, "§cᴇʀɪᴛᴍᴇ ʙᴀsʟᴀᴛɪʟᴀᴍᴀᴅɪ.");
-            plugin.getLogger().log(Level.WARNING, "Farmer eritme başlatılamadı", ex);
-        }
-    }
-
-    private void tickOperations() {
-        for (Operation operation : new ArrayList<>(operations.values())) {
-            Player player = Bukkit.getPlayer(operation.playerId);
-            if (player == null || !player.isOnline()) { cancel(operation, null); continue; }
-            double progress = Math.min(1, (System.nanoTime() - operation.startedAt)
-                    / (recipeNanos(operation.recipe) * 1.0));
-            operation.bar.setProgress(progress);
-            operation.bar.setTitle(color(configuration.guiSettings().progressName()) + " §f" + (int) (progress * 100) + "%");
-            if (progress >= 1) {
-                operations.remove(operation.farmerId);
-                operation.bar.removeAll();
-                complete(operation, player);
+            } catch (RuntimeException ex) {
+                plugin.getLogger().log(Level.WARNING, "Farmer eski menüsü yeniden açılamadı", ex);
             }
         }
-    }
-
-    private static long recipeNanos(SmeltRecipe recipe) { return recipe.durationSeconds() * 1_000_000_000L; }
-
-    private void complete(Operation operation, Player player) {
-        if (!authorized(player, operation.farmerId, operation.recipe.rule())) return;
-        try {
-            FarmerStorage.StockSnapshot snapshot = storage.snapshot(operation.farmerId, operation.recipe);
-            CommandContext context = CommandContext.of(operation.recipe.rule().material(), operation.amount,
-                    player.getName(), player.getUniqueId().toString(), operation.farmerId.toString());
-            List<String> commands = operation.recipe.rule().commands().stream().map(context::apply).toList();
-            SmeltTransaction.Result result = SmeltTransaction.complete(snapshot, operation.recipe.rule().mode(), operation.amount,
-                    commands, command -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command));
-            if (result == SmeltTransaction.Result.COMPLETED) {
-                PlayerMessages.send(player, "§aᴇʀɪᴛᴍᴇ ᴛᴀᴍᴀᴍʟᴀɴᴅɪ.");
-            } else if (result == SmeltTransaction.Result.COMMAND_FAILED) {
-                PlayerMessages.send(player, "§cᴋᴏᴍᴜᴛ ᴜʏɢᴜʟᴀɴᴀᴍᴀᴅɪ; ᴛᴇᴋʀᴀʀ ᴜʀᴜɴ ᴠᴇʀɪʟᴍᴇᴅɪ.");
-                plugin.getLogger().warning("Manual eritme komutu başarısız oldu; kaynak geri alınmadı: farmer=" + operation.farmerId);
-            } else {
-                PlayerMessages.send(player, "§cᴇʀɪᴛᴍᴇ ᴛᴀᴍᴀᴍʟᴀɴᴀᴍᴀᴅɪ; ᴋᴀʏɴᴀᴋ ᴅᴇᴘᴏᴅᴀ ᴋᴀʟᴅɪ.");
-            }
-        } catch (ReflectiveOperationException | RuntimeException ex) {
-            PlayerMessages.send(player, "§cᴇʀɪᴛᴍᴇ ɪsʟᴇᴍɪ ʙᴀsᴀʀɪsɪᴢ.");
-            plugin.getLogger().log(Level.SEVERE, "Farmer eritme tamamlanamadı", ex);
-        }
-    }
-
-    private void cancel(Operation operation, Player player) {
-        operations.remove(operation.farmerId);
-        operation.bar.removeAll();
-        if (player != null) PlayerMessages.send(player, "§eɪsʟᴇᴍ ɪᴘᴛᴀʟ. ᴜʀᴜɴʟᴇʀ ᴅᴇᴘᴏᴅᴀ ᴋᴀʟᴅɪ.");
+        PlayerMessages.send(player, "§cᴄɪꜰᴛᴄɪ ᴍᴇɴᴜsᴜɴᴇ ɢᴇʀɪ ᴅᴏɴᴜʟᴇᴍᴇᴅɪ.");
     }
 
     private static ItemStack icon(Material material, String name, List<String> lore) {
-        ItemStack item = new ItemStack(material);
+        return icon(material, parseText(name), lore);
+    }
+
+    private static ItemStack icon(Material material, Component name, List<String> lore) {
+        ItemStack item = ItemStack.of(material == null || material.isAir() ? Material.BARRIER : material);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(color(name));
-        meta.setLore(lore.stream().map(SmeltGuiHook::color).toList());
+        meta.displayName(name.decoration(TextDecoration.ITALIC, false));
+        List<Component> components = new ArrayList<>(lore.size());
+        for (String line : lore) components.add(parseText(line).decoration(TextDecoration.ITALIC, false));
+        meta.lore(components);
         item.setItemMeta(meta);
         return item;
     }
 
-    private static String color(String text) { return ChatColor.translateAlternateColorCodes('&', text); }
+    private static Component parseText(String text) {
+        String value = text == null ? "" : text;
+        if (value.indexOf('&') >= 0) value = ChatColor.translateAlternateColorCodes('&', value);
+        return value.indexOf(ChatColor.COLOR_CHAR) >= 0
+                ? LegacyComponentSerializer.legacySection().deserialize(value) : MINI.deserialize(value);
+    }
 
     private record PendingMenu(UUID farmerId) { }
+
     private record InjectedButton(Inventory inventory, UUID farmerId) { }
-    private record Operation(UUID playerId, UUID farmerId, SmeltRecipe recipe, int amount, long startedAt, BossBar bar) { }
 
     private static final class SmeltMenu implements InventoryHolder {
         private final SmeltGuiHook owner;
         private final UUID playerId;
         private final UUID farmerId;
         private final int page;
+        private final long generation;
+        private final Inventory originalMenu;
         private final Map<Integer, SmeltRecipe> recipes = new HashMap<>();
         private final Inventory inventory;
-        private SmeltMenu(SmeltGuiHook owner, UUID playerId, UUID farmerId, int page) {
+
+        private SmeltMenu(SmeltGuiHook owner, UUID playerId, UUID farmerId, int page, long generation,
+                          Inventory originalMenu, int rows) {
             this.owner = owner;
             this.playerId = playerId;
             this.farmerId = farmerId;
             this.page = page;
-            this.inventory = Bukkit.createInventory(this, 54, "ᴏᴛᴏ ᴇʀɪᴛᴍᴇ");
+            this.generation = generation;
+            this.originalMenu = originalMenu;
+            this.inventory = Bukkit.createInventory(this, rows * OUTER_COLUMNS,
+                    parseText(owner.configuration.guiSettings().title()));
         }
-        @Override public Inventory getInventory() { return inventory; }
+
+        @Override
+        public Inventory getInventory() {
+            return inventory;
+        }
     }
 }

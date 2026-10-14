@@ -1,26 +1,31 @@
-config-version: 2
+config-version: 3
 enabled: true
-trigger: click # click = sadece farmer GUI düğmesi, automatic = toplama event'i
+trigger: click # click = sadece Farmer GUI düğmesi; automatic = eski toplama olayı hook'u
+
+automatic-smelting:
+  enabled: true
+  interval-ticks: 20
 
 # UXMFarmer sınıflarına derleme zamanında bağlanılmaz.
-# Hook, olay sınıfını çalışma anında yüklediği için UXMFarmer güncellemelerinde
-# bağımlılık sürümünü değiştirmek gerekmez.
+# Modern otomatik eritme, FarmerRepository.getEntries() ile Farmer deposunu tarar.
+# Eski sürümlerde yalnızca GUI üzerinden bağlanan Farmer'lar manuel kullanılabilir.
 hook:
   plugin-name: uxmFarmer
   event-class: com.uxplima.uxmfarmer.api.event.impl.FarmerCollectProductEvent
   priority: NORMAL
 
-# Bir eşleşen kuralda belirtilmeyen alanlar burada kullanılır.
 defaults:
-  mode: plugin # plugin: ürünü UXMFarmer depolasın, commands: aşağıdaki komutları çalıştır
+  mode: plugin # plugin: ürünü aynı UXMFarmer deposunda sakla, commands: yalnızca manuel komut çalıştır
   min-amount: 1
   max-amount: 0 # 0 = sınırsız
-  consume: false # automatic commands modunda Farmer'ın eklediği kaynağı depodan düşür
+  consume: false # eski toplama event'i commands modu için kaynak tüketimi
   permission: ''
   commands: []
 
 gui:
   enabled: true
+  title: '<black><bold>Oto Eritme'
+  filler-material: GRAY_STAINED_GLASS_PANE
   slot: 7
   rows: 6
   duration-seconds: 10
@@ -28,17 +33,15 @@ gui:
   permission: uxmfarmerotosmelter.use
   button:
     material: BLAST_FURNACE
-    name: '&6ᴏᴛᴏ ᴇʀɪᴛᴍᴇ'
+    name: '<gold>Oto Eritme'
     lore:
-      - ''
-      - '&7ᴜʀᴜɴ ᴍᴇɴᴜsᴜɴᴜ ᴀᴄᴍᴀᴋ ɪᴄɪɴ ᴛɪᴋʟᴀ'
-      - ''
-      - '&eᴇʀɪᴛᴍᴇ ᴍᴇɴᴜsᴜ ɪᴄɪɴ ᴛɪᴋʟᴀ'
+      - '<gray>Eritme menüsünü açmak için tıkla'
   progress:
-    name: '&6ᴇʀɪᴛɪʟɪʏᴏʀ'
+    name: '<gold>Eritiliyor'
     bar-length: 20
 
 # Anahtarlar Bukkit Material adlarıdır. Büyük/küçük harf fark etmez.
+# Otomatik eritme yalnızca plugin modundaki metal cevher tariflerini çalıştırır.
 items:
   RAW_IRON:
     mode: plugin
@@ -48,12 +51,35 @@ items:
     mode: plugin
     output-material: IRON_INGOT
     min-amount: 1
+  DEEPSLATE_IRON_ORE:
+    mode: plugin
+    output-material: IRON_INGOT
+    min-amount: 1
+  RAW_GOLD:
+    mode: plugin
+    output-material: GOLD_INGOT
+    min-amount: 1
   GOLD_ORE:
     mode: plugin
     output-material: GOLD_INGOT
     min-amount: 1
-  # DIAMOND_ORE:
-  #   mode: plugin
-  #   output-material: DIAMOND
-  #   min-amount: 32
-  #   permission: example.permission
+  DEEPSLATE_GOLD_ORE:
+    mode: plugin
+    output-material: GOLD_INGOT
+    min-amount: 1
+  NETHER_GOLD_ORE:
+    mode: plugin
+    output-material: GOLD_INGOT
+    min-amount: 1
+  RAW_COPPER:
+    mode: plugin
+    output-material: COPPER_INGOT
+    min-amount: 1
+  COPPER_ORE:
+    mode: plugin
+    output-material: COPPER_INGOT
+    min-amount: 1
+  DEEPSLATE_COPPER_ORE:
+    mode: plugin
+    output-material: COPPER_INGOT
+    min-amount: 1

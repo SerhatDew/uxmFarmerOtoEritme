@@ -11,6 +11,7 @@ import java.io.IOException;
 
 public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements CommandExecutor {
     private FarmerHook hook;
+    private SmeltController controller;
     private SmeltGuiHook smeltGuiHook;
     private RuleConfiguration configuration;
     private boolean retryScheduled;
@@ -30,9 +31,14 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
         if (smeltGuiHook != null) {
             smeltGuiHook.shutdown();
         }
+        if (controller != null) {
+            controller.shutdown();
+        }
         if (hook != null) {
             hook.unregister();
         }
+        smeltGuiHook = null;
+        controller = null;
         hook = null;
     }
 
@@ -40,6 +46,12 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
         migrateConfiguration();
         reloadConfig();
         configuration = RuleConfiguration.load(this);
+        if (smeltGuiHook != null) {
+            smeltGuiHook.shutdown();
+        }
+        if (controller != null) {
+            controller.shutdown();
+        }
         if (hook == null) {
             hook = new FarmerHook(this, configuration);
         } else {
@@ -47,12 +59,11 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
         }
         hook.unregister();
         boolean hookReady = !configuration.automatic() || hook.register();
-        if (smeltGuiHook != null) {
-            smeltGuiHook.shutdown();
-        }
-        smeltGuiHook = new SmeltGuiHook(this, configuration);
+        controller = new SmeltController(this, configuration);
+        boolean controllerReady = controller.register();
+        smeltGuiHook = new SmeltGuiHook(this, configuration, controller);
         boolean guiReady = smeltGuiHook.register();
-        if (!hookReady || !guiReady) scheduleHookRetry();
+        if (!hookReady || !controllerReady || !guiReady) scheduleHookRetry();
     }
 
     private void migrateConfiguration() {
@@ -69,15 +80,16 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
     }
 
     private void scheduleHookRetry() {
-        if (retryScheduled || hook == null) {
+        if (retryScheduled || (hook == null && controller == null && smeltGuiHook == null)) {
             return;
         }
         retryScheduled = true;
         getServer().getGlobalRegionScheduler().runDelayed(this, task -> {
             retryScheduled = false;
             boolean hookReady = hook == null || !configuration.automatic() || hook.register();
+            boolean controllerReady = controller == null || controller.register();
             boolean guiReady = smeltGuiHook == null || smeltGuiHook.register();
-            if (!hookReady || !guiReady) {
+            if (!hookReady || !controllerReady || !guiReady) {
                 scheduleHookRetry();
             }
         }, 200L);
@@ -95,10 +107,17 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
             return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
-            if (!configuration.enabled() || !configuration.guiSettings().enabled()) {
-                PlayerMessages.send(sender, "§eᴏᴛᴏ ᴇʀɪᴛᴍᴇ ᴍᴇɴᴜsᴜ ᴀʏᴀʀʟᴀʀᴅᴀ ᴋᴀᴘᴀʟɪ.");
-            } else if (smeltGuiHook != null && smeltGuiHook.isRegistered()) {
-                PlayerMessages.send(sender, "§aᴏᴛᴏ ᴇʀɪᴛᴍᴇ ᴍᴇɴᴜ ʙᴀɢʟᴀɴᴛɪsɪ ᴀᴋᴛɪꜰ.");
+            if (!configuration.enabled()) {
+                PlayerMessages.send(sender, "§eᴏᴛᴏ ᴇʀɪᴛᴍᴇ ᴀʏᴀʀʟᴀʀᴅᴀ ᴋᴀᴘᴀʟɪ.");
+            } else if (controller != null && controller.isRegistered()) {
+                String automatic = !configuration.autoSmeltEnabled()
+                        ? "§eᴏᴛᴏᴍᴀᴛɪᴋ ᴇʀɪᴛᴍᴇ ᴋᴀᴘᴀʟɪ"
+                        : controller.automaticAvailable()
+                        ? "§aᴏᴛᴏᴍᴀᴛɪᴋ ᴇʀɪᴛᴍᴇ ᴀᴋᴛɪꜰ"
+                        : "§eᴏᴛᴏᴍᴀᴛɪᴋ ᴇʀɪᴛᴍᴇ ᴅᴇsᴛᴇᴋʟᴇɴᴍɪʏᴏʀ";
+                String gui = smeltGuiHook != null && smeltGuiHook.isRegistered()
+                        ? "§aGUI ᴀᴋᴛɪꜰ" : "§eGUI ᴋᴀᴘᴀʟɪ";
+                PlayerMessages.send(sender, automatic + "§7, " + gui + ".");
             } else {
                 PlayerMessages.send(sender, "§cꜰᴀʀᴍᴇʀ ʙᴀɢʟᴀɴᴛɪsɪ ᴋᴜʀᴜʟᴀᴍᴀᴅɪ. §7ᴋᴏɴsᴏʟᴅᴀᴋɪ ᴜʏᴀʀɪʏɪ ᴋᴏɴᴛʀᴏʟ ᴇᴛ.");
             }

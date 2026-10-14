@@ -21,7 +21,7 @@ class SmeltGuiHookTest {
     @Test
     void modernMainMenuEventRemembersFarmerAndExpiresUnusedRequest() throws Exception {
         JavaPlugin plugin = mock(JavaPlugin.class);
-        SmeltGuiHook hook = new SmeltGuiHook(plugin, mock(RuleConfiguration.class));
+        SmeltGuiHook hook = new SmeltGuiHook(plugin, mock(RuleConfiguration.class), mock(SmeltController.class));
         set(hook, "menuEventClass", MainMenuEvent.class);
         Player player = mock(Player.class);
         UUID playerId = UUID.randomUUID();
@@ -47,7 +47,7 @@ class SmeltGuiHookTest {
 
     @Test
     void cancelledMainMenuCannotMarkAnotherInventoryForInjection() throws Exception {
-        SmeltGuiHook hook = new SmeltGuiHook(mock(JavaPlugin.class), mock(RuleConfiguration.class));
+        SmeltGuiHook hook = new SmeltGuiHook(mock(JavaPlugin.class), mock(RuleConfiguration.class), mock(SmeltController.class));
         set(hook, "menuEventClass", MainMenuEvent.class);
         try (var bukkit = mockStatic(Bukkit.class)) {
             bukkit.when(Bukkit::isPrimaryThread).thenReturn(true);

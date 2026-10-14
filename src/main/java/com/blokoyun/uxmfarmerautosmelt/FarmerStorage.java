@@ -5,22 +5,33 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.HashMap;
-import java.util.List;
 import java.util.UUID;
 
 /** Uses only UXMFarmer public methods; an incompatible contract fails closed. */
 final class FarmerStorage {
     private final Plugin dependency;
     private final Map<UUID, Object> boundFarmers = new HashMap<>();
+    private boolean repositoryResolved;
+    private boolean modernAvailable;
+    private Object repository;
+    private Method entriesMethod;
+    private Method entryMethod;
 
     FarmerStorage(Plugin dependency) {
         this.dependency = dependency;
     }
 
     void bind(UUID token, Object farmer) {
+        if (token == null || farmer == null) return;
+        try {
+            initializeRepository();
+            if (modernAvailable) return;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            // Keep legacy GUI binding only when the modern repository is unavailable.
+        }
         boundFarmers.put(token, farmer);
     }
 
@@ -92,19 +103,95 @@ final class FarmerStorage {
                 number(destination, "getAmount"), capacity);
     }
 
+    boolean automaticAvailable() {
+        try {
+            initializeRepository();
+            return modernAvailable;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    Iterable<?> farmers() throws ReflectiveOperationException {
+        initializeRepository();
+        if (!modernAvailable) {
+            throw new IllegalStateException("Modern FarmerRepository API kullanılamıyor");
+        }
+        Object entries = entriesMethod.invoke(repository);
+        if (!(entries instanceof Iterable<?> iterable)) {
+            throw new IllegalStateException("FarmerRepository.getEntries() koleksiyon döndürmedi");
+        }
+        return iterable;
+    }
+
     private Object farmer(UUID id) throws ReflectiveOperationException {
         if (!dependency.isEnabled()) {
             throw new IllegalStateException("uxmFarmer etkin değil");
         }
-        Object bound = boundFarmers.get(id);
-        if (bound != null) return bound;
-        Class<?> api = Class.forName("com.uxplima.uxmfarmer.api.UXMFarmerAPI", true,
-                dependency.getClass().getClassLoader());
-        Object result = api.getMethod("getByUUID", UUID.class).invoke(null, id);
-        if (!(result instanceof Optional<?> optional) || optional.isEmpty()) {
+        initializeRepository();
+        if (modernAvailable) {
+            Object live = lookupRepository(id);
+            if (live != null) return live;
             throw new IllegalStateException("Farmer bulunamadı");
         }
-        return optional.get();
+        Object bound = boundFarmers.get(id);
+        if (bound != null) return bound;
+        throw new IllegalStateException("Farmer bulunamadı");
+    }
+
+    private void initializeRepository() throws ReflectiveOperationException {
+        if (repositoryResolved) return;
+        ClassLoader loader = dependency.getClass().getClassLoader();
+        Class<?> pluginType;
+        try {
+            pluginType = Class.forName("com.uxplima.uxmfarmer.FarmerPlugin", true, loader);
+        } catch (ClassNotFoundException ignored) {
+            repositoryResolved = true;
+            return;
+        }
+        if (!pluginType.isInstance(dependency)) {
+            repositoryResolved = true;
+            return;
+        }
+        Object database = pluginType.getMethod("getDatabaseManager").invoke(dependency);
+        repository = database.getClass().getMethod("getFarmerRepository").invoke(database);
+        entriesMethod = repository.getClass().getMethod("getEntries");
+        try {
+            entryMethod = repository.getClass().getMethod("getEntry", UUID.class);
+        } catch (NoSuchMethodException erasedGenericId) {
+            try {
+                entryMethod = repository.getClass().getMethod("getEntry", Object.class);
+            } catch (NoSuchMethodException erasedObjectId) {
+                entryMethod = null;
+            }
+        }
+        modernAvailable = true;
+        repositoryResolved = true;
+    }
+
+    private Object lookupRepository(UUID id) throws ReflectiveOperationException {
+        initializeRepository();
+        if (!modernAvailable) return null;
+        if (entryMethod != null) {
+            Object result = entryMethod.invoke(repository, id);
+            if (result instanceof Optional<?> optional && optional.isPresent()) return optional.get();
+            return null;
+        }
+        Object entries = entriesMethod.invoke(repository);
+        if (entries instanceof Iterable<?> iterable) {
+            for (Object candidate : iterable) {
+                if (candidate != null && id.equals(candidate.getClass().getMethod("getId").invoke(candidate))) {
+                    return candidate;
+                }
+            }
+        }
+        return null;
+    }
+
+    UUID owner(UUID farmerId) throws ReflectiveOperationException {
+        Object farmer = farmer(farmerId);
+        Object owner = farmer.getClass().getMethod("getOwnerUUID").invoke(farmer);
+        return owner instanceof UUID uuid ? uuid : null;
     }
 
     private void ensureSingleServer() throws ReflectiveOperationException {
@@ -112,11 +199,13 @@ final class FarmerStorage {
         try {
             config = dependency.getClass().getMethod("getConfiguration").invoke(dependency);
         } catch (NoSuchMethodException ignored) {
-            // Farmer v6 has no multi-server setting exposed through its public API.
+            // Farmer variants without a public multi-server setting are single-server here.
             return;
         }
+        if (config == null) return;
         Object multiServer = config.getClass().getMethod("getMultiServer").invoke(config);
-        if (Boolean.TRUE.equals(multiServer.getClass().getMethod("isEnabled").invoke(multiServer))) {
+        if (multiServer != null
+                && Boolean.TRUE.equals(multiServer.getClass().getMethod("isEnabled").invoke(multiServer))) {
             throw new IllegalStateException("Çok sunuculu UXMFarmer deposu için atomik işlem API'si gerekli");
         }
     }

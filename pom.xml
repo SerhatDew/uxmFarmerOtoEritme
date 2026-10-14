@@ -9,7 +9,7 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>uxmFarmerOtoEritme</name>
-    <description>Permission-controlled, timed smelting through the Farmer menu.</description>
+    <description>Automatic same-storage ore smelting with a Farmer-style menu.</description>
     <url>https://github.com/SerhatDew/uxmFarmerOtoEritme</url>
     <licenses>
         <license>
