@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">uxmFarmerOtoEritme — permission-gated automatic smelting</title>
+  <desc id="desc">Obsidian and gold product artwork with a furnace robot, permission-scoped smelting highlights, and runtime requirements. The workflow is shown in the separate illustrated GIF.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#080b14"/>
+      <stop offset="0.58" stop-color="#101827"/>
+      <stop offset="1" stop-color="#151019"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="78%" cy="28%" r="60%">
+      <stop offset="0" stop-color="#fbbf24" stop-opacity=".22"/>
+      <stop offset=".46" stop-color="#f59e0b" stop-opacity=".07"/>
+      <stop offset="1" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset=".45" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#334155"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity=".45"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#fff" stroke-opacity=".028"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" rx="28" fill="url(#bg)"/>
+  <rect width="1200" height="630" rx="28" fill="url(#halo)"/>
+  <rect x="28" y="28" width="1144" height="574" rx="20" fill="url(#grid)"/>
+  <path d="M56 493H1144" stroke="#fff" stroke-opacity=".08"/>
+  <circle cx="970" cy="146" r="168" fill="#fbbf24" opacity=".06" filter="url(#soft)"/>
+
+  <g transform="translate(72 65)">
+    <rect width="120" height="28" rx="14" fill="#fbbf24" fill-opacity=".14" stroke="#fbbf24" stroke-opacity=".45"/>
+    <circle cx="18" cy="14" r="5" fill="#22c55e"/>
+    <text x="32" y="19" fill="#fde68a" font-family="Inter,Segoe UI,sans-serif" font-size="12" font-weight="800" letter-spacing="1.4">PAPER HOOK</text>
+  </g>
+  <text x="72" y="153" fill="#f8fafc" font-family="Inter,Segoe UI,sans-serif" font-size="46" font-weight="900" letter-spacing="-.8">uxmFarmer<tspan fill="#fbbf24">OtoEritme</tspan></text>
+  <text x="75" y="188" fill="#94a3b8" font-family="Inter,Segoe UI,sans-serif" font-size="17" font-weight="700" letter-spacing="2.7">AUTOMATIC SMELTING BRIDGE</text>
+  <text x="75" y="238" fill="#e2e8f0" font-family="Inter,Segoe UI,sans-serif" font-size="19" font-weight="600">Permission-gated jobs. One Farmer storage.</text>
+  <text x="75" y="269" fill="#94a3b8" font-family="Inter,Segoe UI,sans-serif" font-size="17">Ham cevheri erit · külçeyi aynı depoya yaz</text>
+
+  <!-- identity highlights; the animated GIF owns the workflow -->
+  <g transform="translate(72 330)" filter="url(#shadow)">
+    <rect width="612" height="126" rx="18" fill="#0d1421" stroke="#334155" stroke-opacity=".75"/>
+    <path d="M26 28v70" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
+    <text x="48" y="38" fill="#94a3b8" font-family="Inter,Segoe UI,sans-serif" font-size="13" font-weight="700" letter-spacing="2">AUTOMATIC + MANUAL</text>
+    <text x="48" y="75" fill="#f8fafc" font-family="Inter,Segoe UI,sans-serif" font-size="28" font-weight="800">Aynı depo. Ayrı yetkiler.</text>
+    <text x="48" y="103" fill="#cbd5e1" font-family="Inter,Segoe UI,sans-serif" font-size="16">Same storage · Timed jobs · Permission-scoped</text>
+  </g>
+
+  <!-- robot/furnace identity -->
+  <g transform="translate(812 103)" filter="url(#shadow)">
+    <path d="M88 4h64v20h20v18h18v104h-18v20h-20v16H88v-16H68v-20H50V42h18V24h20z" fill="#111827" stroke="#fbbf24" stroke-width="4"/>
+    <path d="M92 24h56v18H92z" fill="#fbbf24" opacity=".22"/>
+    <path d="M68 54h104v73H68z" fill="url(#steel)" stroke="#64748b" stroke-width="3"/>
+    <path d="M87 77h20v20H87zm46 0h20v20h-20z" fill="#67e8f9"/>
+    <path d="M100 111h40" stroke="#fbbf24" stroke-width="7" stroke-linecap="round"/>
+    <path d="M120 4V-25" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="120" cy="-31" r="8" fill="#22c55e" stroke="#bbf7d0" stroke-width="3"/>
+    <path d="M36 79H50M190 79h14" stroke="#fbbf24" stroke-width="6" stroke-linecap="round"/>
+    <path d="M95 162v28m50-28v28M78 190h36m18 0h36" stroke="#fbbf24" stroke-width="7" stroke-linecap="round"/>
+    <text x="120" y="236" text-anchor="middle" fill="#f8fafc" font-family="Inter,Segoe UI,sans-serif" font-size="15" font-weight="900" letter-spacing="1.8">FURNACE HOOK</text>
+    <text x="120" y="260" text-anchor="middle" fill="#94a3b8" font-family="Inter,Segoe UI,sans-serif" font-size="14" font-weight="600">NO PLAYER INVENTORY REWARD</text>
+  </g>
+
+  <!-- prerequisites / honest scope -->
+  <g transform="translate(72 522)">
+    <rect width="720" height="51" rx="14" fill="#0d1421" stroke="#334155"/>
+    <circle cx="24" cy="25" r="5" fill="#22c55e"/>
+    <text x="39" y="31" fill="#cbd5e1" font-family="Inter,Segoe UI,sans-serif" font-size="15" font-weight="700">Paper API 1.21.1</text>
+    <path d="M190 13v25" stroke="#475569"/>
+    <text x="215" y="31" fill="#cbd5e1" font-family="Inter,Segoe UI,sans-serif" font-size="15" font-weight="700">Java 21+</text>
+    <path d="M315 13v25" stroke="#475569"/>
+    <text x="340" y="31" fill="#cbd5e1" font-family="Inter,Segoe UI,sans-serif" font-size="15" font-weight="700">uxmFarmer</text>
+    <path d="M492 13v25" stroke="#475569"/>
+    <text x="517" y="31" fill="#fbbf24" font-family="Inter,Segoe UI,sans-serif" font-size="15" font-weight="800">AUTO PERMISSION</text>
+  </g>
+  <text x="1110" y="580" text-anchor="end" fill="#64748b" font-family="Inter,Segoe UI,sans-serif" font-size="12" font-weight="700" letter-spacing="1">ILLUSTRATION • TEMSİLİ GÖRSEL</text>
+</svg>
