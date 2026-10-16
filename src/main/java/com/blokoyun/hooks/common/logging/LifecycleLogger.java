@@ -4,7 +4,7 @@ import java.util.logging.Level;
 import org.bukkit.ChatColor;
 import org.bukkit.plugin.java.JavaPlugin;
 
-/** Shared lifecycle output for the independently shipped Paper hooks. */
+/** Consistent lifecycle output embedded in each standalone hook. */
 public final class LifecycleLogger {
     private final JavaPlugin plugin;
 
@@ -14,6 +14,7 @@ public final class LifecycleLogger {
 
     public void startup() {
         printBanner(null);
+        info("Başlatılıyor...");
     }
 
     public void shutdown() {
@@ -22,6 +23,30 @@ public final class LifecycleLogger {
 
     public void info(String text) {
         plugin.getLogger().info(text);
+    }
+
+    public void warning(String text) {
+        plugin.getLogger().warning(text);
+    }
+
+    public void waiting(String detail) {
+        warning("Bekleniyor: " + detail);
+    }
+
+    public void inactive(String detail) {
+        info("Pasif: " + detail);
+    }
+
+    public void startupFailed(Throwable failure) {
+        failure("Başlatılamadı; eklenti hazır değil.", failure);
+    }
+
+    public void stoppedBeforeReady() {
+        info("Eklenti hazır hale gelmeden devre dışı bırakıldı.");
+    }
+
+    public void shutdownFailed() {
+        warning("Kapanış sırasında hata oluştu; ayrıntılar yukarıda.");
     }
 
     public void failure(String text, Throwable failure) {

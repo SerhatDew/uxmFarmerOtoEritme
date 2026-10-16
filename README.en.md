@@ -141,7 +141,7 @@ Grant `uxmfarmerotosmelter.use` separately to normal groups that should use time
 
 Reload or plugin shutdown closes open smelting menus; all active jobs are cancelled without consuming resources. Normal menu closing does not cancel a job. The connection is retried if Farmer loads late; quitting cancels only the player's manual job.
 
-The startup/shutdown robot banner uses the actual plugin name and Maven version; platform and elapsed time are obtained at runtime. Missing dependencies and API/configuration failures never produce successful startup output. Reload/shutdown cleans only this hook's task handles and listener instances; a cleanup failure does not prevent remaining resources from being closed.
+The startup/shutdown robot banner uses the actual plugin name and Maven version; platform and elapsed time are obtained at runtime. After `Yapılandırma yüklendi.`, an enabled configuration emits one `Bekleniyor: ...` warning when dependencies are late and one successful ready message once they attach. `enabled: false` emits `Pasif: ...` and never reports successful readiness. Config/API failures use the standard startup-failed state; stopping before readiness and cleanup failures use their separate standard states. Reload/shutdown cleans only this hook's task handles and listener instances; a cleanup failure does not prevent remaining resources from being closed.
 
 ## Verification
 

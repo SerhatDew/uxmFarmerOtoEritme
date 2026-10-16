@@ -26,11 +26,22 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
     private boolean accepting;
     private long startupNanos;
     private boolean startupReported;
+    private boolean passiveInitialized;
+    private boolean waitingReported;
+
+    private void reportWaiting() {
+        if (!waitingReported) {
+            waitingReported = true;
+            lifecycleLogger.waiting("UXMFarmer bağlantısı ve eritme bileşenleri");
+        }
+    }
 
     @Override
     public void onEnable() {
         startupNanos = System.nanoTime();
         startupReported = false;
+        passiveInitialized = false;
+        waitingReported = false;
         lifecycleLogger.startup();
         try {
             saveDefaultConfig();
@@ -38,17 +49,23 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
             if (getCommand("uxmfarmerotosmelter") != null) {
                 getCommand("uxmfarmerotosmelter").setExecutor(this);
             }
-            if (isFullyReady()) {
+            if (!configuration.enabled()) {
+                passiveInitialized = true;
+                lifecycleLogger.inactive("Yapılandırmada kapalı; dinleyici ve görev başlatılmadı.");
+            } else if (isFullyReady()) {
                 startupReported = true;
                 lifecycleLogger.started(startupNanos);
             } else {
-                lifecycleLogger.info("UXMFarmer bağımlılığı bekleniyor; bileşenler hazır olduğunda yeniden denenecek.");
+                reportWaiting();
             }
         } catch (RuntimeException | LinkageError ex) {
             accepting = false;
             startupReported = false;
-            lifecycleLogger.failure("Oto eritme başlatılamadı; eklenti hazır değil.", ex);
-            cleanupResources();
+            passiveInitialized = false;
+            lifecycleLogger.startupFailed(ex);
+            if (!cleanupResources()) {
+                lifecycleLogger.shutdownFailed();
+            }
             throw ex;
         }
     }
@@ -59,11 +76,12 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
         lifecycleLogger.shutdown();
         accepting = false;
         boolean clean = cleanupResources();
-        if (clean && startupReported) {
+        if (!clean) {
+            lifecycleLogger.shutdownFailed();
+        } else if (startupReported || passiveInitialized) {
             lifecycleLogger.stopped(stoppedNanos);
         } else {
-            lifecycleLogger.info(clean ? "Eklenti hazır hale gelmeden devre dışı bırakıldı."
-                    : "Kapanış sırasında hata oluştu; ayrıntılar yukarıda.");
+            lifecycleLogger.stoppedBeforeReady();
         }
     }
 
@@ -81,11 +99,13 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
             throw new IllegalStateException("Önceki eritme kaynakları tamamen kapatılamadı.");
         }
         startupReported = false;
+        passiveInitialized = false;
+        waitingReported = false;
         configuration = loaded;
         accepting = true;
         lifecycleLogger.info("Yapılandırma yüklendi.");
         if (!loaded.enabled()) {
-            lifecycleLogger.info("Eritme yapılandırmadan kapalı; dinleyici ve görev başlatılmadı.");
+            passiveInitialized = true;
             return;
         }
         FarmerHook nextHook = new FarmerHook(this, loaded);
@@ -135,14 +155,17 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
                     scheduleHookRetry();
                 } else if (!startupReported) {
                     startupReported = true;
-                    lifecycleLogger.info("UXMFarmer bağlantısı hazır; oto eritme bileşenleri aktif.");
                     lifecycleLogger.started(startupNanos);
                 }
             } catch (RuntimeException | LinkageError ex) {
                 startupReported = false;
+                passiveInitialized = false;
                 accepting = false;
-                lifecycleLogger.failure("UXMFarmer bağlantısı başlatılamadı.", ex);
-                cleanupResources();
+                boolean clean = cleanupResources();
+                lifecycleLogger.startupFailed(ex);
+                if (!clean) {
+                    lifecycleLogger.shutdownFailed();
+                }
             }
         }, 200L);
     }
@@ -210,18 +233,27 @@ public final class UxmFarmerAutoSmeltPlugin extends JavaPlugin implements Comman
             try {
                 startupNanos = System.nanoTime();
                 reloadHook();
-                if (isFullyReady()) {
+                if (!configuration.enabled()) {
+                    passiveInitialized = true;
+                    lifecycleLogger.inactive("Yapılandırmada kapalı; dinleyici ve görev başlatılmadı.");
+                    PlayerMessages.send(sender, "§aʙᴀsᴀʀɪʟɪ ʏᴇɴɪʟᴇɴᴅɪ.");
+                } else if (isFullyReady()) {
                     startupReported = true;
                     lifecycleLogger.started(startupNanos);
                     PlayerMessages.send(sender, "§aʙᴀsᴀʀɪʟɪ ʏᴇɴɪʟᴇɴᴅɪ.");
                 } else {
+                    reportWaiting();
                     PlayerMessages.send(sender, "§eʙᴀɢʟᴀɴᴛɪʟᴀʀ ʙᴇᴋʟᴇɴɪʏᴏʀ; ʏᴇɴɪᴅᴇɴ ᴅᴇɴᴇɴᴇᴄᴇᴋ.");
                 }
             } catch (RuntimeException | LinkageError ex) {
                 accepting = false;
                 startupReported = false;
-                cleanupResources();
-                lifecycleLogger.failure("Yapılandırma yeniden yüklenemedi.", ex);
+                passiveInitialized = false;
+                boolean clean = cleanupResources();
+                lifecycleLogger.startupFailed(ex);
+                if (!clean) {
+                    lifecycleLogger.shutdownFailed();
+                }
                 PlayerMessages.send(sender, "§cʏᴇɴɪʟᴇᴍᴇ ʙᴀsᴀʀɪsɪᴢ; ᴇᴋʟᴇɴᴛɪ ᴘᴀsɪꜰ.");
             }
             return true;

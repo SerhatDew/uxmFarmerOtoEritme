@@ -141,7 +141,7 @@ Normal oyuncuların manuel eritmesi için `uxmfarmerotosmelter.use` iznini ilgil
 
 Reload veya eklentinin kapanması sırasında açık eritme menüleri kapanır; devam eden tüm işlemler kaynak tüketmeden iptal edilir. Normal menü kapatma işlemi iptal etmez. Farmer'ın geç açılması durumunda bağlantı yeniden denenir; oyuncunun bağlantısı koparsa yalnızca manuel işlemi iptal edilir.
 
-Açılış/kapanış robot bannerı pluginin gerçek adı ve Maven sürümünü kullanır; platform ve süre çalışma anında alınır. Bağımlılık beklenirken veya API/config hatası oluştuğunda başarı mesajı yazılmaz. Reload/kapanış yalnızca bu hook'un task handle'larını ve listener örneklerini temizler; bir temizlik hatası diğer kaynakların kapatılmasını engellemez.
+Açılış/kapanış robot bannerı pluginin gerçek adı ve Maven sürümünü kullanır; platform ve süre çalışma anında alınır. Başlangıçta `Yapılandırma yüklendi.` sonrasında etkin yapılandırmada bağımlılık hazır değilse tek bir `Bekleniyor: ...` uyarısı yazılır; hazır olduğunda tek bir başarı mesajı gelir. `enabled: false` için `Pasif: ...` bildirilir ve başarıyla hazır olma mesajı yazılmaz. Config/API hatası `Başlatılamadı; eklenti hazır değil.` ile raporlanır; hazır olmadan kapanış ve temizlik hataları ayrı standart durumlarla bildirilir. Reload/kapanış yalnızca bu hook'un task handle'larını ve listener örneklerini temizler; bir temizlik hatası diğer kaynakların kapatılmasını engellemez.
 
 ## Doğrulama
 
