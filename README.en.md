@@ -35,7 +35,7 @@
 ## Requirements and installation
 
 - Java 21 or newer is required on the server; Maven 3 is additionally required to build from source.
-- For a ready-to-use JAR, use the [latest release](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest); do not install the **Source code** archive or the `hook-common` JAR on the server.
+- For a ready-to-use JAR, use the [latest release](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest); do not install the **Source code** archive on the server.
 - The build target is Paper API 1.21.1; this is not a promise of runtime support for other Paper versions.
 - Run `mvn clean verify` at the repository root, then copy `target/uxmFarmerOtoEritme.jar` to your server's `plugins/` directory. The config is created on first startup.
 - No paid or proprietary Farmer JAR is required to compile. Third-party Farmer files are not included; the corresponding Farmer plugin must be installed on the running server.
@@ -68,7 +68,7 @@ Use `gui.title` / `gui.filler-material` to configure the title and filler. New d
 
 ## Configuration
 
-The config is created at `plugins/uxmFarmerOtoEritme/config.yml`; packaged defaults are in [config.yml](uxmfarmer-autosmelt/src/main/resources/config.yml).
+- The config is created at `plugins/uxmFarmerOtoEritme/config.yml`; packaged defaults are in [config.yml](src/main/resources/config.yml).
 
 - Keys under `items` are Bukkit `Material` names (case-insensitive).
 - The default `mode: plugin` debits the source and stores `output-material` in **the same Farmer**, without executing player reward commands. If omitted, recognized materials use their default smelting mapping. Invalid fields, types or recipes fail explicitly; components are not activated with invalid configuration. The optional `mode: commands` debits the source and executes a custom `commands` list from the console.

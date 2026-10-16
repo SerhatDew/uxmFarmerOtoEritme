@@ -35,7 +35,7 @@
 ## Gereksinimler ve kurulum
 
 - Sunucuda Java 21 veya üzeri gerekir; kaynaktan derleme için ayrıca Maven 3 kullanılır.
-- Hazır JAR için [en yeni release'i](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest) kullanın; **Source code** arşivini veya `hook-common` JAR'ını sunucuya kurmayın.
+- Hazır JAR için [en yeni release'i](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest) kullanın; **Source code** arşivini sunucuya kurmayın.
 - Derleme hedefi Paper API 1.21.1'dir; bu, diğer Paper sürümlerinde çalışma garantisi değildir.
 - Repo kökünde `mvn clean verify` çalıştırın ve `target/uxmFarmerOtoEritme.jar` dosyasını sunucunuzun `plugins/` klasörüne kopyalayın. İlk açılışta config oluşturulur.
 - Derleme için ücretli veya özel Farmer JAR'ı gerekmez. Üçüncü taraf Farmer dosyaları bu projeye dahil değildir; çalışan sunucuda ilgili Farmer eklentisi bulunmalıdır.
@@ -68,7 +68,7 @@ Başlık ve dolgu malzemesi `gui.title` / `gui.filler-material` ile ayarlanır. 
 
 ## Yapılandırma
 
-Ayar dosyası `plugins/uxmFarmerOtoEritme/config.yml` konumunda oluşturulur; paketlenen varsayılanlar [config.yml](uxmfarmer-autosmelt/src/main/resources/config.yml) dosyasındadır.
+- Ayar dosyası `plugins/uxmFarmerOtoEritme/config.yml` konumunda oluşturulur; paketlenen varsayılanlar [config.yml](src/main/resources/config.yml) dosyasındadır.
 
 - `items` anahtarları Bukkit `Material` adlarıdır (büyük/küçük harf fark etmez).
 - Varsayılan `mode: plugin`, kaynağı düşürüp `output-material` ürününü **aynı Farmer deposuna** ekler; oyuncuya ödül komutu çalıştırmaz. Alan verilmezse tanınan malzemelerin varsayılan eritme eşleşmesi kullanılır. Geçersiz alan, tür veya tarif açık hata verir; hatalı config ile bileşenler etkinleştirilmez. İsteğe bağlı `mode: commands`, kaynağı düşürüp özel `commands` listesini konsoldan çalıştırır.
