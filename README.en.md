@@ -110,6 +110,53 @@ items:
     min-amount: 1
 ```
 
+### Complete settings reference and examples
+
+| Group | Key (default) | Meaning and validation |
+| --- | --- | --- |
+| Schema | `config-version: 4` | Integer 0–4; schema version only. |
+| General | `enabled: true` | Enables/disables this plugin; must be boolean. |
+| Legacy event | `trigger: click` | `click` exposes only the GUI button; `automatic` enables the old collection-event/command hook. It does not affect storage scanning. |
+| Hook | `hook.plugin-name: uxmFarmer`, `event-class: ...FarmerCollectProductEvent`, `priority: NORMAL` | Dependency and legacy event selection. `priority` accepts only `LOWEST`, `LOW`, `NORMAL`, `HIGH`, `HIGHEST`, or `MONITOR`. This is not the GUI event; keep these values as strings and the section as a section. |
+| Automatic | `automatic-smelting.enabled: true`, `interval-ticks: 20`, `permission: uxmfarmerotosmelter.auto` | Storage scan loop; `interval-ticks` is a positive integer (20 ticks = 1 second). `''` disables the automatic permission check; Farmer ownership/membership and recipe permissions still apply. |
+| Instant | `instant-smelting.permission: uxmfarmerotosmelter.instant` | `''` disables countdown-free jobs. It never grants automation or GUI access by itself. |
+| Default recipe | `defaults.mode: plugin`, `min-amount: 1`, `max-amount: 0`, `consume: false`, `permission: ''`, `commands: []` | Values inherited by recipes. `max-amount: 0` means unlimited. `commands` is meaningful only in `commands` mode and must be a string list. |
+| GUI | `enabled: true`, `title: <black><bold>Oto Eritme`, `filler-material: GRAY_STAINED_GLASS_PANE`, `slot: 7`, `rows: 6`, `duration-seconds: 10`, `batch-size: 64`, `permission: uxmfarmerotosmelter.use` | `rows` is 3–6; `slot` must be 0 through `rows*9-1` and also be usable/non-colliding in the Farmer main menu. Duration is 1–86400 seconds, batch is 0 or positive; `gui.progress.bar-length` is 1–50 (default 20). Defaults are `button.material: BLAST_FURNACE`, `button.name: <gold>Oto Eritme`, `button.lore: [<gray>Eritme menüsünü açmak için tıkla]`, and `progress.name: <gold>Eritiliyor`. |
+| Recipe | `items.<MATERIAL>` | Bukkit material name (case-insensitive). `plugin` mode requires a valid, different `output-material`; `commands` mode requires a non-empty `commands` list. `duration-seconds`, `batch-size`, `min/max-amount`, `consume`, and `permission` may be overridden per recipe. |
+
+`min-amount` and `max-amount` must be 0 or greater; `max-amount: 0` means unlimited, otherwise `max-amount >= min-amount` is required. Each recipe's `duration-seconds` is 1–86400 and `batch-size` is 0 or positive. If recipe values are absent, duration and batch inherit the GUI values. The scan interval (`interval-ticks`) controls how often the new automatic loop looks; batch size controls how much one scan/job may take, while duration controls completion wait. Sources are not debited during the wait.
+
+**Two same-storage recipe examples:**
+
+```yaml
+items:
+  RAW_IRON: {mode: plugin, output-material: IRON_INGOT, min-amount: 1, duration-seconds: 10, batch-size: 64}
+  GOLD_ORE: {mode: plugin, output-material: GOLD_INGOT, min-amount: 8, max-amount: 64, duration-seconds: 5, batch-size: 16}
+```
+
+For a normal manual player, satisfy `gui.permission` and any recipe `permission`; for VIP automation grant `auto`, and grant `instant` separately for countdown-free VIP jobs. LuckPerms example:
+
+```text
+lp group player permission set uxmfarmerotosmelter.use true
+lp group vip permission set uxmfarmerotosmelter.use true
+lp group vip permission set uxmfarmerotosmelter.auto true
+lp group vip permission set uxmfarmerotosmelter.instant true
+```
+
+Manual processing starts from the GUI button and is cancelled if that player quits. Automatic processing does not require a GUI, but with the defaults the Farmer owner must be online and have `auto`. Manual and automatic jobs cannot overlap on one Farmer. `plugin` mode debits the source from Farmer storage and stores output in that same storage; both materials must be defined in that Farmer's `collected-materials.yml`. A missing output record or insufficient capacity leaves the source untouched. In the modern storage loop, command recipes are not dispatched automatically; in legacy `trigger: automatic` mode, configured `commands` may run from the collection event. Command side effects cannot be rolled back. Do not invent command-mode settings: use only the real `commands` list and supported placeholders.
+
+Farmer licensing, region/membership rules, economy prices, and NPC settings are not this hook's configuration; they come from Farmer's own config and runtime API. A valid license, active Farmer, source/output entries in `collected-materials.yml`, and any region/economy/NPC plugins required by Farmer are prerequisites. This README contains no real license, token, or password. Setting `automatic-smelting.permission: ''` removes the automatic permission check and may allow offline processing; the automatic loop's ownership/membership and recipe-permission checks still apply.
+
+`/otoeritme reload` reloads only this hook's config; it closes open menus and cancels active jobs without consuming sources. Use a full server restart when changing Farmer, Paper, or the plugin JAR; PlugMan reload is unsupported. Migration reads the disk file directly, adds only required fields, preserves existing permissions/recipes, and does not restore recipes that a user removed.
+For a manual-only setup, merge this fragment into the existing file (do not replace the entire file):
+```yaml
+automatic-smelting:
+  enabled: false
+```
+For VIP automation, leave `enabled: true` and grant the owner `uxmfarmerotosmelter.auto`; grant `instant` separately if needed. These fragments do not delete recipes or replace the rest of the defaults.
+
+**Step-by-step check:** (1) fix Farmer license/startup errors; (2) define source and output in `collected-materials.yml`; (3) put source stock in storage for one `plugin` recipe; (4) grant `use` to a normal group and `auto` (plus optional `instant`) to the VIP owner; (5) check `/otoeritme status`, the GUI, and console logs; (6) use `reload` and confirm an open job is cancelled while its source remains. Real Farmer GUI/region transfers and full live loot proof were not verified; the animation is illustrative.
+
 ## Compatibility and event contracts
 
 The GUI hook automatically looks for UXMFarmer 3.18's `com.uxplima.uxmfarmer.api.event.impl.FarmerOpenMainMenuEvent` or legacy Farmer v6's `xyz.geik.farmer.api.handlers.FarmerMainGuiOpenEvent`. The UXMFarmer 3.18 plugin name is `uxmFarmer`; the legacy `Farmer` name in older configs is also supported.
@@ -118,7 +165,7 @@ Storage-based automatic smelting uses modern UXMFarmer 3.18's storage/enumeratio
 
 `hook.plugin-name` selects the dependency; `hook.event-class` selects the **collection event for automatic mode**, not the GUI opening event. Check event and storage API compatibility separately when using another fork.
 
-Folia is not supported. A live server running Paper 26.2 or Java 25 has not been verified; targeting Java 21 does not by itself guarantee server compatibility.
+Folia is not supported. Leaf/Paper 26.2 with Java 25 was exercised for startup/banner, waiting, status/reload, disabled-config, malformed-config recovery, and shutdown behavior; live Farmer GUI interaction, storage transfers, and region/loot behavior were not verified. Targeting Java 21 does not by itself guarantee server compatibility.
 
 ## Commands and permissions
 

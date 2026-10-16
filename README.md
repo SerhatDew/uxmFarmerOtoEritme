@@ -110,6 +110,53 @@ items:
     min-amount: 1
 ```
 
+### Tam ayar referansı ve örnekler
+
+| Grup | Alan (varsayılan) | Anlamı ve doğrulama |
+| --- | --- | --- |
+| Şema | `config-version: 4` | 0–4 arası tam sayı; yalnızca şema sürümüdür. |
+| Genel | `enabled: true` | Eklentiyi açar/kapatır; boolean olmalıdır. |
+| Legacy event | `trigger: click` | `click` yalnız GUI düğmesini, `automatic` eski toplama-event/komut hook'unu açar. Depo taramasını etkilemez. |
+| Hook | `hook.plugin-name: uxmFarmer`, `event-class: ...FarmerCollectProductEvent`, `priority: NORMAL` | Bağımlılık ve legacy event seçimi. `priority` yalnız `LOWEST`, `LOW`, `NORMAL`, `HIGH`, `HIGHEST`, `MONITOR` olabilir. GUI event'i değildir; alanlar metindir, bölüm biçimi korunmalıdır. |
+| Otomatik | `automatic-smelting.enabled: true`, `interval-ticks: 20`, `permission: uxmfarmerotosmelter.auto` | Depo tarama döngüsü; `interval-ticks` pozitif tam sayı (20 tick = 1 saniye). İzin `''` ise otomatik izin kontrolü kapatılır; Farmer sahibi/üye ve tarif izinleri yine geçerlidir. |
+| Anlık | `instant-smelting.permission: uxmfarmerotosmelter.instant` | `''` beklemesiz işlemi kapatır. Otomatiği veya GUI'yi tek başına açmaz. |
+| Varsayılan tarif | `defaults.mode: plugin`, `min-amount: 1`, `max-amount: 0`, `consume: false`, `permission: ''`, `commands: []` | Tariflere miras kalan değerler. `max-amount: 0` sınırsızdır. `commands` yalnız `commands` modunda anlamlıdır; liste metinlerden oluşmalıdır. |
+| GUI | `enabled: true`, `title: <black><bold>Oto Eritme`, `filler-material: GRAY_STAINED_GLASS_PANE`, `slot: 7`, `rows: 6`, `duration-seconds: 10`, `batch-size: 64`, `permission: uxmfarmerotosmelter.use` | `rows` 3–6; `slot` 0 ile `rows*9-1` arasında olmalı ve Farmer ana menüsünde kullanılabilir/çakışmayan bir slot olmalıdır. Süre 1–86400 saniye, batch 0 veya pozitif; `gui.progress.bar-length` 1–50 (varsayılan 20). `button.material: BLAST_FURNACE`, `button.name: <gold>Oto Eritme`, `button.lore: [<gray>Eritme menüsünü açmak için tıkla]`, `progress.name: <gold>Eritiliyor` varsayılandır. |
+| Tarif | `items.<MATERIAL>` | Bukkit material adı (büyük/küçük harf duyarsız). `mode: plugin` için farklı ve geçerli `output-material` gerekir; `mode: commands` için boş olmayan `commands` gerekir. `duration-seconds`, `batch-size`, `min/max-amount`, `consume`, `permission` tarif bazında override edilebilir. |
+
+`min-amount` ve `max-amount` değerleri 0 veya daha büyük olmalıdır; `max-amount: 0` sınırsızdır, aksi durumda `max-amount >= min-amount` gerekir. Her tarifin `duration-seconds` değeri 1–86400, `batch-size` değeri 0 veya pozitif olmalıdır. `duration-seconds` ve `batch-size` tarifte yoksa GUI değerlerinden miras alınır. Tarama aralığı (`interval-ticks`) yalnız yeni otomatik döngünün sıklığıdır; batch sınırı tek taramada/işlemde ne kadar alınacağını belirler, süre ise işlemin tamamlanma beklemesidir. Kaynak bekleme sırasında tüketilmez.
+
+**Aynı depoda iki örnek tarif:**
+
+```yaml
+items:
+  RAW_IRON: {mode: plugin, output-material: IRON_INGOT, min-amount: 1, duration-seconds: 10, batch-size: 64}
+  GOLD_ORE: {mode: plugin, output-material: GOLD_INGOT, min-amount: 8, max-amount: 64, duration-seconds: 5, batch-size: 16}
+```
+
+Manuel normal oyuncu için `gui.permission` ve tarif `permission` koşullarını sağlayın; VIP otomatik için Farmer sahibine `auto`, beklemesiz VIP için ayrıca `instant` verin. Örnek LuckPerms:
+
+```text
+lp group oyuncu permission set uxmfarmerotosmelter.use true
+lp group vip permission set uxmfarmerotosmelter.use true
+lp group vip permission set uxmfarmerotosmelter.auto true
+lp group vip permission set uxmfarmerotosmelter.instant true
+```
+
+Manuel işlem oyuncunun GUI düğmesine basmasıyla başlar; oyuncu çevrimdışı olursa iptal edilir. Otomatik işlem GUI gerektirmez, ancak varsayılan ayarda Farmer sahibi çevrimiçi ve `auto` izinli olmalıdır. Otomatik ve manuel işlem aynı Farmer'da çakışmaz. `plugin` modu kaynak malzemeyi Farmer deposundan alıp çıktıyı da Farmer'ın `collected-materials.yml` içinde tanımlı aynı depoya yazar. Hem kaynak hem çıktı bu Farmer materyal listesinde olmalıdır; çıktı kaydı yoksa veya kapasite yetmezse hiçbir kaynak mutasyona uğramaz. Modern depo döngüsünde komut tarifleri otomatik çalıştırılmaz; legacy `trigger: automatic` modunda tanımlı `commands` toplama event'inden çalışabilir. Komut yan etkileri geri alınamaz. Komut modu için belgelenmemiş ayar eklemeyin; yalnız gerçek `commands` listesi ve desteklenen yer tutucuları kullanın.
+
+Farmer'ın lisansı, bölge/üyelik kuralları, ekonomi fiyatları ve NPC ayarları bu eklentinin config'i değildir; Farmer'ın kendi config'i ve çalışma API'sinden gelir. Geçerli lisans, aktif Farmer, depoda `collected-materials.yml` tanımı ve (kullanılıyorsa) bölge/ekonomi/NPC eklentilerinin Farmer tarafından beklenen kurulumu gerekir. Bu README gerçek lisans/token/parola değeri içermez. `automatic-smelting.permission: ''` otomatik izin kontrolünü kaldırır; bu ayar çevrimdışı çalışmayı mümkün kılabilir, ancak otomatik döngünün sahip/üyelik ve tarif izin kontrolleri yine geçerlidir.
+
+`/otoeritme reload` yalnız bu eklentinin config'ini yeniden okur; açık menüleri kapatır ve devam eden işleri kaynak tüketmeden iptal eder. Farmer, Paper veya eklenti JAR değişiminde tam sunucu yeniden başlatması kullanın; PlugMan reload desteklenmez. Migration disk dosyasını doğrudan okur, yalnız eksik/gerekli alanları ekler, mevcut izin/tarif değerlerini ve silinmiş tarifleri geri yüklemez.
+Manuel-only kurulum için bu parçayı mevcut dosyadaki ilgili alanlarla birleştirin (dosyanın tamamını bununla değiştirmeyin):
+```yaml
+automatic-smelting:
+  enabled: false
+```
+VIP otomasyonu için `enabled: true` bırakın ve sahibine `uxmfarmerotosmelter.auto` verin; gerekirse ayrıca `instant` verin. Bu parçalar tarifleri silmez veya varsayılanların tamamının yerine geçmez.
+
+**Adım adım kontrol:** (1) Farmer'ın lisans ve startup logunu düzeltin; (2) `collected-materials.yml` içinde kaynak+çıktıyı tanımlayın; (3) tek bir `plugin` tarifinde depoya kaynak koyun; (4) normal gruba `use`, VIP sahibine `auto` (gerekirse `instant`) verin; (5) `/otoeritme status`, GUI ve konsol logunu kontrol edin; (6) `reload` ile açık işi iptal edip kaynağın korunmasını doğrulayın. Gerçek Farmer GUI/region aktarımı ve tam canlı loot kanıtı bu dokümantasyon kapsamında doğrulanmadı; animasyon temsili kayıttır.
+
 ## Uyumluluk ve event sözleşmeleri
 
 GUI bağlantısı UXMFarmer 3.18 için `com.uxplima.uxmfarmer.api.event.impl.FarmerOpenMainMenuEvent`, legacy Farmer v6 için `xyz.geik.farmer.api.handlers.FarmerMainGuiOpenEvent` sınıfını otomatik arar. UXMFarmer 3.18'in eklenti adı `uxmFarmer`'dır; eski config'lerdeki `Farmer` adı da desteklenir.
@@ -118,7 +165,7 @@ Depodan otomatik eritme modern UXMFarmer 3.18'in depo/listeleme API'sini kullan�
 
 `hook.plugin-name` bağımlı eklentiyi, `hook.event-class` ise **automatic modunun toplama olayını** seçer; GUI açılış olayı bu ayarla değiştirilmez. Başka bir fork kullanırken event ve depolama API'sinin uyumunu ayrıca kontrol edin.
 
-Folia desteklenmez. Paper 26.2 ve Java 25 ile canlı sunucu çalışması doğrulanmamıştır; Java 21 derleme hedefi tek başına sunucu uyumluluğu garantisi değildir.
+Folia desteklenmez. Leaf/Paper 26.2 ve Java 25; açılış/banner, bekleme, status/reload, pasif config, hatalı config toparlanması ve kapanış davranışı için çalıştırıldı; canlı Farmer GUI etkileşimi, depo aktarımı ve bölge/loot davranışı doğrulanmadı. Java 21 hedefi tek başına sunucu uyumluluğu garantisi değildir.
 
 ## Komutlar ve izinler
 
