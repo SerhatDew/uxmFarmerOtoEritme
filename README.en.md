@@ -2,11 +2,21 @@
 
 [Türkçe](README.md)
 
+![uxmFarmerOtoEritme — automatic smelting bridge](assets/hero.svg)
+
+[![Latest release](https://img.shields.io/github/v/release/SerhatDew/uxmFarmerOtoEritme?display_name=tag&sort=semver&color=f59e0b)](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest)
+
+[**Download the latest JAR**](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest/download/uxmFarmerOtoEritme.jar) · [Release notes and SHA-256](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest)
+
 ![Java 21+](https://img.shields.io/badge/Java-21%2B-f59e0b)
 ![Paper API 1.21.1](https://img.shields.io/badge/Paper_API-1.21.1-38bdf8)
 [![GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-22c55e)](LICENSE)
 
-A Paper plugin that automatically smelts uncooked metal ores already in Farmer storage and deposits the output back into the same Farmer. A uxmFarmer-style menu shows stock, capacity, and active jobs, with manual smelting available too. Farmer classes are not used at compile time; event and API links are established at runtime through reflection.
+## At a glance
+
+- **Storage-first:** debits raw ore from Farmer storage and writes ingots back to that same storage; no player-inventory rewards.
+- **Permission-gated:** automatic processing requires the Farmer owner's `uxmfarmerotosmelter.auto`; `instant` only skips the countdown and never enables automation by itself.
+- **Predictable jobs:** 10-second default duration, manual GUI, recipe-level capacity/permission checks, and runtime reflection for the Farmer bridge.
 
 ![Timed raw iron smelting flow](assets/smelting-flow.gif)
 
@@ -25,6 +35,7 @@ A Paper plugin that automatically smelts uncooked metal ores already in Farmer s
 ## Requirements and installation
 
 - Java 21 or newer is required on the server; Maven 3 is additionally required to build from source.
+- For a ready-to-use JAR, use the [latest release](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest); do not install the **Source code** archive or the `hook-common` JAR on the server.
 - The build target is Paper API 1.21.1; this is not a promise of runtime support for other Paper versions.
 - Run `mvn clean verify` at the repository root, then copy `uxmfarmer-autosmelt/target/uxmFarmerOtoEritme.jar` to your server's `plugins/` directory. The config is created on first startup.
 - No paid or proprietary Farmer JAR is required to compile. Third-party Farmer files are not included; the corresponding Farmer plugin must be installed on the running server.

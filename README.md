@@ -2,11 +2,21 @@
 
 [English](README.en.md)
 
+![uxmFarmerOtoEritme — otomatik eritme köprüsü](assets/hero.svg)
+
+[![Son sürüm](https://img.shields.io/github/v/release/SerhatDew/uxmFarmerOtoEritme?display_name=tag&sort=semver&color=f59e0b)](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest)
+
+[**Son sürüm JAR'ını indir**](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest/download/uxmFarmerOtoEritme.jar) · [Sürüm notları ve SHA-256](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest)
+
 ![Java 21+](https://img.shields.io/badge/Java-21%2B-f59e0b)
 ![Paper API 1.21.1](https://img.shields.io/badge/Paper_API-1.21.1-38bdf8)
 [![GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-22c55e)](LICENSE)
 
-Farmer deposundaki pişmemiş metal cevherlerini tıklama gerektirmeden eritip aynı depoya yazan Paper eklentisi. uxmFarmer düzenine uygun bir menüden stok, kapasite ve devam eden işlemler görüntülenir; manuel eritme de kullanılabilir. Farmer sınıfları derleme zamanında kullanılmaz; event ve API bağlantıları çalışma anında, yansıma (reflection) ile kurulur.
+## Kısa bakış
+
+- **Depo odaklı:** Ham cevheri Farmer deposundan düşer, külçeyi aynı depoya yazar; oyuncu envanterine ödül vermez.
+- **İzin kontrollü:** Otomatik çalışma Farmer sahibinin `uxmfarmerotosmelter.auto` iznine bağlıdır; `instant` yalnızca beklemeyi atlar ve otomatiği tek başına açmaz.
+- **Esnek kullanım:** 10 saniyelik varsayılan işlem, manuel GUI, tarif bazlı kapasite/izin kontrolleri ve çalışma anında reflection ile Farmer bağlantısı.
 
 ![Süreli ham demir eritme akışı](assets/smelting-flow.gif)
 
@@ -25,6 +35,7 @@ Farmer deposundaki pişmemiş metal cevherlerini tıklama gerektirmeden eritip a
 ## Gereksinimler ve kurulum
 
 - Sunucuda Java 21 veya üzeri gerekir; kaynaktan derleme için ayrıca Maven 3 kullanılır.
+- Hazır JAR için [en yeni release'i](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest) kullanın; **Source code** arşivini veya `hook-common` JAR'ını sunucuya kurmayın.
 - Derleme hedefi Paper API 1.21.1'dir; bu, diğer Paper sürümlerinde çalışma garantisi değildir.
 - Repo kökünde `mvn clean verify` çalıştırın ve `uxmfarmer-autosmelt/target/uxmFarmerOtoEritme.jar` dosyasını sunucunuzun `plugins/` klasörüne kopyalayın. İlk açılışta config oluşturulur.
 - Derleme için ücretli veya özel Farmer JAR'ı gerekmez. Üçüncü taraf Farmer dosyaları bu projeye dahil değildir; çalışan sunucuda ilgili Farmer eklentisi bulunmalıdır.
