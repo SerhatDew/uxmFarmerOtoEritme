@@ -4,9 +4,9 @@
 
 ![uxmFarmerOtoEritme — automatic smelting bridge](assets/hero.svg)
 
-[![Latest release](https://img.shields.io/github/v/release/SerhatDew/uxmFarmerOtoEritme?display_name=tag&sort=semver&color=f59e0b)](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/SerhatDew/uxmfarmer-autosmelt?display_name=tag&sort=semver&color=f59e0b)](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest)
 
-[**Download the latest JAR**](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest/download/uxmFarmerOtoEritme.jar) · [Release notes and SHA-256](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest)
+[**Download the latest JAR**](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest/download/uxmFarmerOtoEritme.jar) · [Release notes and SHA-256](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest)
 
 ![Java 21+](https://img.shields.io/badge/Java-21%2B-f59e0b)
 ![Paper API 1.21.1](https://img.shields.io/badge/Paper_API-1.21.1-38bdf8)
@@ -35,7 +35,7 @@
 ## Requirements and installation
 
 - Java 21 or newer is required on the server; Maven 3 is additionally required to build from source.
-- For a ready-to-use JAR, use the [latest release](https://github.com/SerhatDew/uxmFarmerOtoEritme/releases/latest); do not install the **Source code** archive or the `hook-common` JAR on the server.
+- For a ready-to-use JAR, use the [latest release](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest); do not install the **Source code** archive or the `hook-common` JAR on the server.
 - The build target is Paper API 1.21.1; this is not a promise of runtime support for other Paper versions.
 - Run `mvn clean verify` at the repository root, then copy `uxmfarmer-autosmelt/target/uxmFarmerOtoEritme.jar` to your server's `plugins/` directory. The config is created on first startup.
 - No paid or proprietary Farmer JAR is required to compile. Third-party Farmer files are not included; the corresponding Farmer plugin must be installed on the running server.

@@ -9,7 +9,7 @@
     <packaging>pom</packaging>
     <name>uxmFarmerOtoEritme</name>
     <description>Automatic same-storage ore smelting with a Farmer-style menu.</description>
-    <url>https://github.com/SerhatDew/uxmFarmerOtoEritme</url>
+    <url>https://github.com/SerhatDew/uxmfarmer-autosmelt</url>
     <licenses>
         <license>
             <name>GNU General Public License v3.0</name>
