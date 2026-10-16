@@ -56,7 +56,7 @@ Manual jobs check ownership/membership, `uxmfarmerotosmelter.use`, `gui.permissi
 
 The default recipe converts raw iron (`RAW_IRON`) to iron ingots. For example, with 3 raw iron in storage, after 10 seconds 3 raw iron are debited from the same Farmer and its `IRON_INGOT` stock increases by 3. **No items are given to the player's inventory.** Resources are not consumed during the countdown. `RAW_IRON` and `IRON_ORE` stock are separate.
 
-Iron ores become `IRON_INGOT`, gold ores `GOLD_INGOT`, and copper ores `COPPER_INGOT` in the same storage. The source must already be in Farmer storage; this plugin does not collect dropped items. The output material must be defined in Farmer's `collected-materials.yml`. If destination capacity is insufficient, the operation stops without consuming the source.
+Iron ores become `IRON_INGOT`, gold ores `GOLD_INGOT`, and copper ores `COPPER_INGOT` in the same storage. The source must already be in Farmer storage; this plugin does not collect dropped items. The output material must be defined in Farmer's `collected-materials.yml`; missing output records are not created and the operation stops without consuming the source. If destination capacity is insufficient, the operation also stops without consuming the source.
 
 ## Farmer-style menu
 

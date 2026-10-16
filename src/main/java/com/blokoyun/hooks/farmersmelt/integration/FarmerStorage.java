@@ -86,10 +86,7 @@ public final class FarmerStorage {
         }
         Object destination = item(farmer, recipe.output());
         if (destination == null) {
-            Class<?> api = Class.forName("com.uxplima.uxmfarmer.api.UXMFarmerAPI", true,
-                    dependency.getClass().getClassLoader());
-            Method create = api.getMethod("getOrCreateCollectedItem", farmer.getClass(), Material.class);
-            destination = create.invoke(null, farmer, recipe.output());
+            throw new IllegalStateException("Farmer deposunda çıktı ürünü tanımlı değil");
         }
         checkUnlocked(destination);
         // Also verifies that UXMFarmer has a collected-materials entry for the result.

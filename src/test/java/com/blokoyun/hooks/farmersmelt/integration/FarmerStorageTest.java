@@ -58,6 +58,22 @@ class FarmerStorageTest {
         assertEquals(7, output.getAmount());
     }
 
+    @Test
+    void missingOutputConfigurationDoesNotCreateDestinationRecord() throws Exception {
+        Plugin plugin = mock(Plugin.class);
+        when(plugin.isEnabled()).thenReturn(true);
+        FarmerStorage storage = new FarmerStorage(plugin);
+        UUID farmerId = new UUID(0, 2);
+        StoredItem source = new StoredItem(3);
+        storage.bind(farmerId, new StoredFarmer(Map.of(Material.RAW_IRON, source)));
+        SmeltRecipe recipe = new SmeltRecipe(
+                new ItemRule(Material.RAW_IRON, ItemRule.RuleMode.PLUGIN, 1, 0, false, "", List.of()),
+                Material.IRON_INGOT, 10, 64);
+
+        assertThrows(IllegalStateException.class, () -> storage.snapshot(farmerId, recipe));
+        assertEquals(3, source.getAmount());
+    }
+
     public static class StoredFarmer {
         private final Map<Material, StoredItem> items;
         StoredFarmer(Map<Material, StoredItem> items) { this.items = items; }

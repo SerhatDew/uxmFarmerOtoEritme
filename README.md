@@ -56,7 +56,7 @@ Manuel kullanımda sahip/üye ilişkisi, `uxmfarmerotosmelter.use`, `gui.permiss
 
 Varsayılan tarif ham demirden (`RAW_IRON`) demir külçesi üretir. Örneğin depoda 3 ham demir varsa, 10 saniye sonunda aynı Farmer deposundan 3 ham demir düşülür ve depodaki `IRON_INGOT` miktarı 3 artırılır. **Oyuncu envanterine eşya verilmez.** Bekleme sırasında kaynak tüketilmez. `RAW_IRON` ve `IRON_ORE` stokları birbirine karıştırılmaz.
 
-Demir cevherleri `IRON_INGOT`, altın cevherleri `GOLD_INGOT`, bakır cevherleri `COPPER_INGOT` olarak aynı depoya eklenir. Kaynak zaten Farmer deposunda bulunmalıdır; bu eklenti yere düşen eşyaları toplamaz. Çıktı malzemesi Farmer'ın `collected-materials.yml` dosyasında tanımlı olmalıdır. Hedef ürün kapasitesi yetersizse işlem kaynak tüketmeden durur.
+Demir cevherleri `IRON_INGOT`, altın cevherleri `GOLD_INGOT`, bakır cevherleri `COPPER_INGOT` olarak aynı Farmer deposuna eklenir. Kaynak zaten Farmer deposunda bulunmalıdır; bu eklenti yere düşen eşyaları toplamaz. Çıktı malzemesi Farmer'ın `collected-materials.yml` dosyasında tanımlı olmalıdır; tanımsız çıktı kaydı oluşturulmaz ve işlem kaynak tüketmeden durur. Hedef ürün kapasitesi yetersizse işlem kaynak tüketmeden durur.
 
 ## Farmer tarzı menü
 
