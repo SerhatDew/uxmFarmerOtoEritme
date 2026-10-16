@@ -26,9 +26,13 @@ A Paper plugin that automatically smelts uncooked metal ores already in Farmer s
 
 - Java 21 or newer is required on the server; Maven 3 is additionally required to build from source.
 - The build target is Paper API 1.21.1; this is not a promise of runtime support for other Paper versions.
-- Run `mvn clean verify`, then copy `target/uxmFarmerOtoEritme.jar` to your server's `plugins/` directory. The config is created on first startup.
+- Run `mvn clean verify` at the repository root, then copy `uxmfarmer-autosmelt/target/uxmFarmerOtoEritme.jar` to your server's `plugins/` directory. The config is created on first startup.
 - No paid or proprietary Farmer JAR is required to compile. Third-party Farmer files are not included; the corresponding Farmer plugin must be installed on the running server.
 - See [LICENSE](LICENSE) for the GPL-3.0-only license.
+
+The repository contains a parent POM for shared build settings, a small `hook-common` helper module and the independent `uxmfarmer-autosmelt` plugin module. `hook-common` contains only the logger and is shaded/relocated under `com.blokoyun.hooks.farmersmelt.internal.common`. Do not install it separately; Paper and Farmer classes are not bundled. The Ax–Farmer bridge remains a separate repository/version/JAR.
+
+Remove the previous JAR for this hook; never run two copies together. PlugMan unloading/reloading is unsupported; prefer a full server restart.
 
 ## How it works
 
@@ -56,10 +60,10 @@ Use `gui.title` / `gui.filler-material` to configure the title and filler. New d
 
 ## Configuration
 
-The config is created at `plugins/uxmFarmerOtoEritme/config.yml`; packaged defaults are in [config.yml](src/main/resources/config.yml).
+The config is created at `plugins/uxmFarmerOtoEritme/config.yml`; packaged defaults are in [config.yml](uxmfarmer-autosmelt/src/main/resources/config.yml).
 
 - Keys under `items` are Bukkit `Material` names (case-insensitive).
-- The default `mode: plugin` debits the source and stores `output-material` in **the same Farmer**, without executing player reward commands. If omitted, recognized materials use their default smelting mapping; invalid recipes are logged and skipped. The optional `mode: commands` debits the source and executes a custom `commands` list from the console.
+- The default `mode: plugin` debits the source and stores `output-material` in **the same Farmer**, without executing player reward commands. If omitted, recognized materials use their default smelting mapping. Invalid fields, types or recipes fail explicitly; components are not activated with invalid configuration. The optional `mode: commands` debits the source and executes a custom `commands` list from the console.
 - `min-amount`, `max-amount` (`0` means unlimited), `duration-seconds`, and `batch-size` can be set per item. `batch-size: 0` means the entire suitable stock.
 - `automatic-smelting.enabled` controls storage-based automatic smelting; `interval-ticks` is the scan interval (default: 20 ticks).
 - `automatic-smelting.permission` defaults to `uxmfarmerotosmelter.auto`. Set `''` to allow everyone; offline processing is then possible when no additional recipe permission is required.
@@ -69,6 +73,8 @@ The config is created at `plugins/uxmFarmerOtoEritme/config.yml`; packaged defau
 - GUI size is constrained to 3–6 rows; the default 6-row layout shows 28 products. Slot and occupied-inventory safety checks remain in place.
 
 Startup or reload upgrades old configs to `config-version: 4`. Missing VIP permission fields are added while custom permission values are preserved. Upgrading from v3 does not change recipes. Older versions also migrate bundled inventory rewards to storage recipes and add the v3 ore variants; custom recipes/text are retained.
+
+`config-version` is the schema version only. Configuration is read directly from disk into immutable settings; resource defaults do not restore removed recipes. Existing files are not overwritten on startup; migrations change only the required fields. Product capacities, prices, membership and permission rules come from Farmer's API; the recipes/GUI/permissions here configure bridge behavior only.
 
 `trigger: automatic` enables the old collection-event/command hook; **it does not control storage-based automatic smelting**. The new processing loop uses `automatic-smelting.enabled`. If Farmer loads late, the processing and GUI connections are retried automatically.
 
@@ -126,6 +132,15 @@ lp group vip permission set uxmfarmerotosmelter.instant true
 Grant `uxmfarmerotosmelter.use` separately to normal groups that should use timed manual smelting. VIP benefits do not require the `admin` permission.
 
 Reload or plugin shutdown closes open smelting menus; all active jobs are cancelled without consuming resources. Normal menu closing does not cancel a job. The connection is retried if Farmer loads late; quitting cancels only the player's manual job.
+
+The startup/shutdown robot banner uses the actual plugin name and Maven version; platform and elapsed time are obtained at runtime. Missing dependencies and API/configuration failures never produce successful startup output. Reload/shutdown cleans only this hook's task handles and listener instances; a cleanup failure does not prevent remaining resources from being closed.
+
+## Verification
+
+43 tests passed, covering stock transfers/rollback, automatic and instant VIP permissions, modern/legacy GUI integration, startup-bound event APIs and configuration migration/validation.
+
+An isolated Leaf 26.2 / Java 25 run exercised the packaged JAR's robot banner, missing-Farmer waiting state, `status`/`reload`, `enabled: false`, malformed boolean rejection, recovery and clean shutdown. A standalone fault-injection smoke program confirmed that retry/GUI cleanup failures do not skip remaining listener/task cleanup or report false success. Live-player GUI interaction and world/region transfers with a real Farmer installation were not exercised.
+
 
 ## Troubleshooting
 

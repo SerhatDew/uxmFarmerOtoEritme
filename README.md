@@ -26,9 +26,13 @@ Farmer deposundaki pişmemiş metal cevherlerini tıklama gerektirmeden eritip a
 
 - Sunucuda Java 21 veya üzeri gerekir; kaynaktan derleme için ayrıca Maven 3 kullanılır.
 - Derleme hedefi Paper API 1.21.1'dir; bu, diğer Paper sürümlerinde çalışma garantisi değildir.
-- `mvn clean verify` çalıştırın ve `target/uxmFarmerOtoEritme.jar` dosyasını sunucunuzun `plugins/` klasörüne kopyalayın. İlk açılışta config oluşturulur.
+- Repo kökünde `mvn clean verify` çalıştırın ve `uxmfarmer-autosmelt/target/uxmFarmerOtoEritme.jar` dosyasını sunucunuzun `plugins/` klasörüne kopyalayın. İlk açılışta config oluşturulur.
 - Derleme için ücretli veya özel Farmer JAR'ı gerekmez. Üçüncü taraf Farmer dosyaları bu projeye dahil değildir; çalışan sunucuda ilgili Farmer eklentisi bulunmalıdır.
 - GPL-3.0-only lisansı için [LICENSE](LICENSE) dosyasına bakın.
+
+Repo, ortak derleme ayarlarını tutan ana POM, küçük `hook-common` yardımcı modülü ve bağımsız `uxmfarmer-autosmelt` plugin modülünden oluşur. `hook-common` yalnızca logger içerir; JAR içine `com.blokoyun.hooks.farmersmelt.internal.common` altında relocate edilerek gömülür. Sunucuya ayrıca kurulmaz; Paper ve Farmer sınıfları dağıtım JAR'ına eklenmez. Ax–Farmer hook'u ayrı repo/sürüm/JAR olarak kalır.
+
+Aynı hook'un eski JAR'ını kaldırın; iki kopyayı birlikte çalıştırmayın. PlugMan ile söküp takma desteklenmez; tam sunucu yeniden başlatması tercih edilir.
 
 ## Çalışma şekli
 
@@ -56,10 +60,10 @@ Başlık ve dolgu malzemesi `gui.title` / `gui.filler-material` ile ayarlanır. 
 
 ## Yapılandırma
 
-Ayar dosyası `plugins/uxmFarmerOtoEritme/config.yml` konumunda oluşturulur; paketlenen varsayılanlar [config.yml](src/main/resources/config.yml) dosyasındadır.
+Ayar dosyası `plugins/uxmFarmerOtoEritme/config.yml` konumunda oluşturulur; paketlenen varsayılanlar [config.yml](uxmfarmer-autosmelt/src/main/resources/config.yml) dosyasındadır.
 
 - `items` anahtarları Bukkit `Material` adlarıdır (büyük/küçük harf fark etmez).
-- Varsayılan `mode: plugin`, kaynağı düşürüp `output-material` ürününü **aynı Farmer deposuna** ekler; oyuncuya ödül komutu çalıştırmaz. Alan verilmezse tanınan malzemelerin varsayılan eritme eşleşmesi kullanılır; geçersiz tarifler loglanıp atlanır. İsteğe bağlı `mode: commands`, kaynağı düşürüp özel `commands` listesini konsoldan çalıştırır.
+- Varsayılan `mode: plugin`, kaynağı düşürüp `output-material` ürününü **aynı Farmer deposuna** ekler; oyuncuya ödül komutu çalıştırmaz. Alan verilmezse tanınan malzemelerin varsayılan eritme eşleşmesi kullanılır. Geçersiz alan, tür veya tarif açık hata verir; hatalı config ile bileşenler etkinleştirilmez. İsteğe bağlı `mode: commands`, kaynağı düşürüp özel `commands` listesini konsoldan çalıştırır.
 - `min-amount`, `max-amount` (`0` sınırsız), `duration-seconds` ve `batch-size` item başına ayarlanabilir. `batch-size: 0`, uygun stoğun tamamıdır.
 - `automatic-smelting.enabled` depodan otomatik eritmenin anahtarıdır; `interval-ticks` tarama aralığıdır (varsayılan: 20 tick).
 - `automatic-smelting.permission` varsayılan olarak `uxmfarmerotosmelter.auto` ister. `''` verilirse otomatik eritme herkese açılır; ek tarif izni yoksa çevrimdışı da çalışabilir.
@@ -69,6 +73,8 @@ Ayar dosyası `plugins/uxmFarmerOtoEritme/config.yml` konumunda oluşturulur; pa
 - GUI boyutu 3–6 satırla sınırlıdır; varsayılan 6 satırda 28 ürün gösterilir. Slot ve dolu/işgal edilmiş menü güvenliği kontrol edilir.
 
 Eski config açılışta veya reload sırasında `config-version: 4`'e güncellenir. Eksik VIP izin alanları eklenir; özel izin değerleri korunur. v3'ten yükseltme tariflere dokunmaz. Daha eski sürümlerdeki varsayılan envantere verme tarifleri depoya yazan tariflere dönüştürülür ve v3 cevher varyantları eklenir; özel tarifler/metinler korunur.
+
+`config-version` yalnızca şema sürümüdür. Config doğrudan diskten okunup değişmez ayar nesnesine dönüştürülür; paket varsayılanları silinmiş tarifleri geri eklemez. Açılışta mevcut dosya ezilmez; yalnızca gerekli alanlar taşınır. Ürün kapasitesi, fiyat, üyelik ve izin kuralları Farmer API'sinden alınır; buradaki tarif/GUI/izin alanları yalnızca köprünün davranışıdır.
 
 `trigger: automatic` eski toplama-event/komut hook'unu açar; **depodan otomatik eritme ayarı değildir**. Yeni depodan eritme `automatic-smelting.enabled` ile kontrol edilir. Farmer sunucu açılışında geç gelirse işlem ve GUI bağlantısı otomatik olarak yeniden denenir.
 
@@ -126,6 +132,15 @@ lp group vip permission set uxmfarmerotosmelter.instant true
 Normal oyuncuların manuel eritmesi için `uxmfarmerotosmelter.use` iznini ilgili gruba ayrıca verin. VIP avantajları için `admin` izni gerekmez.
 
 Reload veya eklentinin kapanması sırasında açık eritme menüleri kapanır; devam eden tüm işlemler kaynak tüketmeden iptal edilir. Normal menü kapatma işlemi iptal etmez. Farmer'ın geç açılması durumunda bağlantı yeniden denenir; oyuncunun bağlantısı koparsa yalnızca manuel işlemi iptal edilir.
+
+Açılış/kapanış robot bannerı pluginin gerçek adı ve Maven sürümünü kullanır; platform ve süre çalışma anında alınır. Bağımlılık beklenirken veya API/config hatası oluştuğunda başarı mesajı yazılmaz. Reload/kapanış yalnızca bu hook'un task handle'larını ve listener örneklerini temizler; bir temizlik hatası diğer kaynakların kapatılmasını engellemez.
+
+## Doğrulama
+
+43 test geçti: depo aktarımı/geri alma, otomatik ve anlık VIP izinleri, modern/legacy GUI bağlantısı, başlangıçta bağlanan event API'si ve config geçişi/doğrulaması.
+
+İzole Leaf 26.2 / Java 25 çalıştırmasında paketlenmiş JAR ile robot bannerı, Farmer yokken bekleme, `status`/`reload`, `enabled: false`, hatalı boolean reddi, düzeltme sonrası toparlanma ve temiz kapanış doğrulandı. Ayrı fault-injection smoke programında retry/GUI temizliği hata verse de diğer listener/taskların kapatıldığı ve yanlış başarı mesajı yazılmadığı gözlendi. Canlı oyuncuyla GUI etkileşimi ve gerçek Farmer kurulumunda dünya/bölge aktarımı bu çalıştırmanın kapsamına girmedi.
+
 
 ## Sorun giderme
 
