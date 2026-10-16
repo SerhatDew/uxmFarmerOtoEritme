@@ -37,12 +37,9 @@
 - Sunucuda Java 21 veya üzeri gerekir; kaynaktan derleme için ayrıca Maven 3 kullanılır.
 - Hazır JAR için [en yeni release'i](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest) kullanın; **Source code** arşivini veya `hook-common` JAR'ını sunucuya kurmayın.
 - Derleme hedefi Paper API 1.21.1'dir; bu, diğer Paper sürümlerinde çalışma garantisi değildir.
-- Repo kökünde `mvn clean verify` çalıştırın ve `uxmfarmer-autosmelt/target/uxmFarmerOtoEritme.jar` dosyasını sunucunuzun `plugins/` klasörüne kopyalayın. İlk açılışta config oluşturulur.
+- Repo kökünde `mvn clean verify` çalıştırın ve `target/uxmFarmerOtoEritme.jar` dosyasını sunucunuzun `plugins/` klasörüne kopyalayın. İlk açılışta config oluşturulur.
 - Derleme için ücretli veya özel Farmer JAR'ı gerekmez. Üçüncü taraf Farmer dosyaları bu projeye dahil değildir; çalışan sunucuda ilgili Farmer eklentisi bulunmalıdır.
 - GPL-3.0-only lisansı için [LICENSE](LICENSE) dosyasına bakın.
-
-Repo, ortak derleme ayarlarını tutan ana POM, küçük `hook-common` yardımcı modülü ve bağımsız `uxmfarmer-autosmelt` plugin modülünden oluşur. `hook-common` yalnızca logger içerir; JAR içine `com.blokoyun.hooks.farmersmelt.internal.common` altında relocate edilerek gömülür. Sunucuya ayrıca kurulmaz; Paper ve Farmer sınıfları dağıtım JAR'ına eklenmez. Ax–Farmer hook'u ayrı repo/sürüm/JAR olarak kalır.
-
 Aynı hook'un eski JAR'ını kaldırın; iki kopyayı birlikte çalıştırmayın. PlugMan ile söküp takma desteklenmez; tam sunucu yeniden başlatması tercih edilir.
 
 ## Çalışma şekli

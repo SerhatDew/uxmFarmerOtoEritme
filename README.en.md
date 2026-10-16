@@ -37,12 +37,9 @@
 - Java 21 or newer is required on the server; Maven 3 is additionally required to build from source.
 - For a ready-to-use JAR, use the [latest release](https://github.com/SerhatDew/uxmfarmer-autosmelt/releases/latest); do not install the **Source code** archive or the `hook-common` JAR on the server.
 - The build target is Paper API 1.21.1; this is not a promise of runtime support for other Paper versions.
-- Run `mvn clean verify` at the repository root, then copy `uxmfarmer-autosmelt/target/uxmFarmerOtoEritme.jar` to your server's `plugins/` directory. The config is created on first startup.
+- Run `mvn clean verify` at the repository root, then copy `target/uxmFarmerOtoEritme.jar` to your server's `plugins/` directory. The config is created on first startup.
 - No paid or proprietary Farmer JAR is required to compile. Third-party Farmer files are not included; the corresponding Farmer plugin must be installed on the running server.
 - See [LICENSE](LICENSE) for the GPL-3.0-only license.
-
-The repository contains a parent POM for shared build settings, a small `hook-common` helper module and the independent `uxmfarmer-autosmelt` plugin module. `hook-common` contains only the logger and is shaded/relocated under `com.blokoyun.hooks.farmersmelt.internal.common`. Do not install it separately; Paper and Farmer classes are not bundled. The Ax–Farmer bridge remains a separate repository/version/JAR.
-
 Remove the previous JAR for this hook; never run two copies together. PlugMan unloading/reloading is unsupported; prefer a full server restart.
 
 ## How it works
